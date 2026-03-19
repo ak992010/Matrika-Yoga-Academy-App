@@ -3,8 +3,10 @@ from __future__ import annotations
 import csv
 import html
 import json
+import re
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import streamlit as st
 
@@ -311,6 +313,74 @@ st.set_page_config(
 
 def esc(value: object) -> str:
     return html.escape(str(value))
+
+
+def normalize_text(value: str) -> str:
+    return " ".join(str(value).split()).strip()
+
+
+def normalize_email(value: str) -> str:
+    return normalize_text(value).lower()
+
+
+def digits_only(value: str) -> str:
+    return "".join(character for character in str(value) if character.isdigit())
+
+
+def normalize_phone(value: str) -> str:
+    digits = digits_only(value)
+    if not digits:
+        return ""
+    if len(digits) == 10:
+        return f"+91{digits}"
+    if digits.startswith("91") and len(digits) == 12:
+        return f"+{digits}"
+    return digits
+
+
+def valid_email(value: str) -> bool:
+    return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value))
+
+
+def valid_phone(value: str) -> bool:
+    digits = digits_only(value)
+    if not digits:
+        return False
+    return len(digits) == 10 or (digits.startswith("91") and len(digits) == 12)
+
+
+def build_whatsapp_url(message: str) -> str:
+    return f"https://wa.me/{digits_only(normalize_phone(CONTACT_PHONE))}?text={quote(message)}"
+
+
+def build_mailto_url(subject: str, body: str) -> str:
+    return f"mailto:{CONTACT_EMAIL}?subject={quote(subject)}&body={quote(body)}"
+
+
+def render_support_actions(subject: str, message: str, *, include_call: bool = True) -> None:
+    columns = st.columns(3 if include_call else 2)
+    with columns[0]:
+        st.link_button(
+            "WhatsApp the team",
+            build_whatsapp_url(message),
+            use_container_width=True,
+        )
+    if include_call:
+        with columns[1]:
+            st.link_button(
+                "Call the team",
+                f"tel:{normalize_phone(CONTACT_PHONE)}",
+                use_container_width=True,
+            )
+        email_slot = columns[2]
+    else:
+        email_slot = columns[1]
+    with email_slot:
+        st.link_button(
+            "Email the team",
+            build_mailto_url(subject, message),
+            use_container_width=True,
+        )
 
 
 def google_persistence_enabled() -> bool:
@@ -985,6 +1055,21 @@ def render_sidebar() -> None:
             """,
             unsafe_allow_html=True,
         )
+        st.link_button(
+            "WhatsApp the team",
+            build_whatsapp_url(
+                "Hi Matrika Academy, I want help with admissions, class timings, or payments."
+            ),
+            use_container_width=True,
+        )
+        st.link_button(
+            "Email the team",
+            build_mailto_url(
+                "Matrika Academy enquiry",
+                "Hi Matrika Academy, I want help with admissions, class timings, or payments.",
+            ),
+            use_container_width=True,
+        )
 
         storage_message = (
             "Persistent Google Sheets storage is connected."
@@ -1186,6 +1271,11 @@ def admissions_page() -> None:
         )
         st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
         render_steps(ADMISSIONS_STEPS)
+        st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
+        render_support_actions(
+            "Matrika Academy admission enquiry",
+            "Hi Matrika Academy, I want help choosing the right program and batch.",
+        )
 
     with right:
         with st.form("booking_form"):
@@ -1220,23 +1310,33 @@ def admissions_page() -> None:
             submit = st.form_submit_button("Request admission")
 
             if submit:
-                if not full_name or not email:
+                clean_name = normalize_text(full_name)
+                clean_email = normalize_email(email)
+                clean_phone = normalize_phone(phone)
+                clean_goals = normalize_text(goals)
+                clean_notes = normalize_text(notes)
+
+                if not clean_name or not clean_email:
                     st.error("Name and email are required.")
+                elif not valid_email(clean_email):
+                    st.error("Enter a valid email address.")
+                elif phone and not valid_phone(phone):
+                    st.error("Enter a valid phone number or leave it blank.")
                 else:
                     save_row(
                         "bookings.csv",
                         {
                             "submitted_at": datetime.now().isoformat(timespec="seconds"),
                             "page": "Admissions",
-                            "name": full_name,
-                            "email": email,
-                            "phone": phone,
+                            "name": clean_name,
+                            "email": clean_email,
+                            "phone": clean_phone,
                             "track": track,
                             "learner_stage": learner_stage,
                             "mode": mode,
                             "preferred_time": preferred_time,
-                            "goals": goals,
-                            "notes": notes,
+                            "goals": clean_goals,
+                            "notes": clean_notes,
                         },
                     )
                     st.success("Your request was saved. We will contact you shortly.")
@@ -1264,7 +1364,14 @@ def live_studio_page() -> None:
             if BACKUP_MEET_URL:
                 st.link_button("Open backup Meet", BACKUP_MEET_URL)
             else:
-                st.caption("Backup link will be added when the studio shares it.")
+                st.link_button(
+                    "Request backup link",
+                    build_whatsapp_url(
+                        "Hi Matrika Academy, please share the backup live class link for today."
+                    ),
+                    use_container_width=True,
+                )
+                st.caption("Use WhatsApp if the primary link does not open.")
         with right:
             render_card(
                 "Live etiquette",
@@ -1295,7 +1402,14 @@ def live_studio_page() -> None:
             if REPLAY_DRIVE_URL:
                 st.link_button("Open replay drive", REPLAY_DRIVE_URL)
             else:
-                st.caption("Replay access will be added when the studio shares it.")
+                st.link_button(
+                    "Request replay access",
+                    build_whatsapp_url(
+                        "Hi Matrika Academy, please share the latest replay access link."
+                    ),
+                    use_container_width=True,
+                )
+                st.caption("The team can share the replay link on WhatsApp or email.")
         with right:
             render_card(
                 "Class resources",
@@ -1317,16 +1431,21 @@ def live_studio_page() -> None:
             submit = st.form_submit_button("Save attendance")
 
             if submit:
-                if not attendee_name or not attendee_email:
+                clean_name = normalize_text(attendee_name)
+                clean_email = normalize_email(attendee_email)
+
+                if not clean_name or not clean_email:
                     st.error("Name and email are required.")
+                elif not valid_email(clean_email):
+                    st.error("Enter a valid email address.")
                 else:
                     save_row(
                         "attendance.csv",
                         {
                             "submitted_at": datetime.now().isoformat(timespec="seconds"),
                             "page": "Live Studio",
-                            "name": attendee_name,
-                            "email": attendee_email,
+                            "name": clean_name,
+                            "email": clean_email,
                             "session": session,
                             "mode": mode,
                         },
@@ -1367,18 +1486,24 @@ def certification_page() -> None:
             submit = st.form_submit_button("Apply")
 
             if submit:
-                if not full_name or not email:
+                clean_name = normalize_text(full_name)
+                clean_email = normalize_email(email)
+                clean_motivation = normalize_text(motivation)
+
+                if not clean_name or not clean_email:
                     st.error("Name and email are required.")
+                elif not valid_email(clean_email):
+                    st.error("Enter a valid email address.")
                 else:
                     save_row(
                         "training_applications.csv",
                         {
                             "submitted_at": datetime.now().isoformat(timespec="seconds"),
                             "page": "Certification",
-                            "name": full_name,
-                            "email": email,
+                            "name": clean_name,
+                            "email": clean_email,
                             "experience": experience,
-                            "motivation": motivation,
+                            "motivation": clean_motivation,
                         },
                     )
                     st.success("Application received. Mentors will reach out.")
@@ -1426,18 +1551,24 @@ def kids_page() -> None:
         submit = st.form_submit_button("Enroll or enquire")
 
         if submit:
-            if not parent or not child or not email:
+            clean_parent = normalize_text(parent)
+            clean_child = normalize_text(child)
+            clean_email = normalize_email(email)
+
+            if not clean_parent or not clean_child or not clean_email:
                 st.error("Parent name, child name, and email are required.")
+            elif not valid_email(clean_email):
+                st.error("Enter a valid email address.")
             else:
                 save_row(
                     "kids_enquiries.csv",
                     {
                         "submitted_at": datetime.now().isoformat(timespec="seconds"),
                         "page": "Kids Studio",
-                        "parent": parent,
-                        "child": child,
+                        "parent": clean_parent,
+                        "child": clean_child,
                         "age": age,
-                        "email": email,
+                        "email": clean_email,
                     },
                 )
                 st.success("Enquiry received. We will share the kids schedule and links.")
@@ -1454,8 +1585,19 @@ def payments_page() -> None:
 
     left, right = st.columns([1.15, 0.85])
     with left:
-        st.link_button("Open UPI payment", PAYMENT_UPI_URL)
-        st.caption(f"UPI ID: {PAYMENT_UPI_ID}")
+        payment_actions = st.columns(2)
+        with payment_actions[0]:
+            st.link_button("Open UPI payment", PAYMENT_UPI_URL, use_container_width=True)
+        with payment_actions[1]:
+            st.link_button(
+                "WhatsApp payment proof",
+                build_whatsapp_url(
+                    "Hi Matrika Academy, I want to share my payment confirmation."
+                ),
+                use_container_width=True,
+            )
+        st.code(PAYMENT_UPI_ID)
+        st.caption("If the UPI button does not open on desktop, pay to this UPI ID inside your UPI app.")
     with right:
         render_card(
             "Need an invoice?",
@@ -1478,21 +1620,28 @@ def payments_page() -> None:
         submit = st.form_submit_button("Submit proof")
 
         if submit:
-            if not full_name or not email or not reference:
+            clean_name = normalize_text(full_name)
+            clean_email = normalize_email(email)
+            clean_reference = normalize_text(reference)
+            clean_notes = normalize_text(notes)
+
+            if not clean_name or not clean_email or not clean_reference:
                 st.error("Name, email, and payment reference are required.")
+            elif not valid_email(clean_email):
+                st.error("Enter a valid email address.")
             else:
                 save_row(
                     "payments.csv",
                     {
                         "submitted_at": datetime.now().isoformat(timespec="seconds"),
                         "page": "Payments",
-                        "name": full_name,
-                        "email": email,
+                        "name": clean_name,
+                        "email": clean_email,
                         "plan": plan,
                         "amount": amount,
                         "method": method,
-                        "reference": reference,
-                        "notes": notes,
+                        "reference": clean_reference,
+                        "notes": clean_notes,
                     },
                 )
                 st.success("Payment recorded. We will verify and confirm your seat.")
@@ -1516,6 +1665,11 @@ def contact_page() -> None:
             meta=["Zoom / Meet", "IST batches", "Replay support"],
             class_name="info-card",
         )
+        st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
+        render_support_actions(
+            "Matrika Academy support",
+            "Hi Matrika Academy, I need help with classes, payments, or admissions.",
+        )
     with right:
         with st.form("contact_form"):
             full_name = st.text_input("Name")
@@ -1524,17 +1678,23 @@ def contact_page() -> None:
             submit = st.form_submit_button("Send message")
 
             if submit:
-                if not full_name or not email or not message:
+                clean_name = normalize_text(full_name)
+                clean_email = normalize_email(email)
+                clean_message = normalize_text(message)
+
+                if not clean_name or not clean_email or not clean_message:
                     st.error("Please complete all fields.")
+                elif not valid_email(clean_email):
+                    st.error("Enter a valid email address.")
                 else:
                     save_row(
                         "contact_messages.csv",
                         {
                             "submitted_at": datetime.now().isoformat(timespec="seconds"),
                             "page": "Contact",
-                            "name": full_name,
-                            "email": email,
-                            "message": message,
+                            "name": clean_name,
+                            "email": clean_email,
+                            "message": clean_message,
                         },
                     )
                     st.success("Message sent. We will reply soon.")
