@@ -978,9 +978,8 @@ def render_sidebar() -> None:
             f"""
             <div class="sidebar-card">
                 <div class="card-kicker">Support</div>
-                <p class="card-copy">Phone: {CONTACT_PHONE}</p>
                 <p class="card-copy">Email: {CONTACT_EMAIL}</p>
-                <p class="card-copy">UPI: {PAYMENT_UPI_ID}</p>
+                <p class="card-copy">Phone: {CONTACT_PHONE}</p>
                 <p class="card-copy">Timing: IST batches</p>
             </div>
             """,
@@ -1256,7 +1255,7 @@ def live_studio_page() -> None:
         with left:
             render_card(
                 "Join today's class",
-                "Use the main Zoom link for today's class. Backup and replay links will appear here when they are shared.",
+                "Use the main link for the live session and keep the backup link ready if your connection changes.",
                 kicker="Live links",
                 meta=["Zoom", "Primary link", "IST"],
                 class_name="info-card",
@@ -1459,10 +1458,10 @@ def payments_page() -> None:
         st.caption(f"UPI ID: {PAYMENT_UPI_ID}")
     with right:
         render_card(
-            "Need help with fees?",
-            f"Use {PAYMENT_UPI_ID} for payment and email {CONTACT_EMAIL} for invoices or fee questions.",
+            "Need an invoice?",
+            f"Email {CONTACT_EMAIL} with your selected plan and GST details.",
             kicker="Billing",
-            meta=["UPI", "Receipt verification"],
+            meta=["Invoice support", "GST ready"],
             class_name="info-card",
         )
 
@@ -1502,7 +1501,7 @@ def payments_page() -> None:
 def contact_page() -> None:
     render_section(
         "Connect",
-        "Reach the team by phone, email, UPI, or the form below.",
+        "Reach the team by email, phone, or the form below.",
         "We keep replies friendly and quick so families and teachers always know the next step.",
     )
     render_card_grid(CONTACT_CARDS, columns=3, class_name="contact-card")
