@@ -28,6 +28,12 @@ Deploy to Streamlit Community Cloud
 ```toml
 google_sheet_id = "your-google-sheet-id"
 admin_password = "choose-a-strong-password"
+smtp_host = "smtp.gmail.com"
+smtp_port = 587
+smtp_username = "your-email@gmail.com"
+smtp_password = "your-app-password"
+smtp_from_email = "your-email@gmail.com"
+smtp_from_name = "Matrika Academy"
 
 [google_service_account_json]
 type = "service_account"
@@ -47,6 +53,7 @@ client_x509_cert_url = "https://www.googleapis.com/robot/v1/metadata/x509/servic
 4. Share the Google Sheet with the service account email from the JSON file.
 5. Redeploy the app. The sidebar will show whether persistent Google Sheets storage is active.
 6. Open the `Admin` page in the app and unlock it with `admin_password` to review submissions.
+7. Add the SMTP secrets if you want automatic confirmation emails to be sent after form submissions.
 
 Google Sheets setup checklist
 1. Create a Google Sheet that will hold the form data.
@@ -61,3 +68,8 @@ Admin tools
 - The `Admin` page can be protected with `admin_password`.
 - It shows storage status, counts per submission source, recent rows, and a CSV download for the selected form.
 - When Google Sheets is active, it also shows a direct button to open the connected spreadsheet.
+
+Confirmation emails
+- Every form with an email field can send a confirmation email to the same address after submission.
+- For Gmail, use `smtp.gmail.com` with port `587` and a Gmail app password.
+- If SMTP secrets are missing, submissions still save normally and the app shows a setup hint instead of failing.

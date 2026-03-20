@@ -5,8 +5,11 @@ import html
 import io
 import json
 import re
+import smtplib
+import ssl
 from collections.abc import Mapping
 from datetime import datetime
+from email.message import EmailMessage
 from pathlib import Path
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -30,6 +33,12 @@ GOOGLE_SHEET_ID_SECRET = "google_sheet_id"
 ADMIN_PASSWORD_SECRET = "admin_password"
 IST_ZONE = ZoneInfo("Asia/Kolkata")
 OVERVIEW_WORKSHEET = "Sheet1"
+SMTP_HOST_SECRET = "smtp_host"
+SMTP_PORT_SECRET = "smtp_port"
+SMTP_USERNAME_SECRET = "smtp_username"
+SMTP_PASSWORD_SECRET = "smtp_password"
+SMTP_FROM_EMAIL_SECRET = "smtp_from_email"
+SMTP_FROM_NAME_SECRET = "smtp_from_name"
 
 SUBMISSION_SCHEMAS = {
     "bookings.csv": {
@@ -455,6 +464,102 @@ def current_timestamp() -> str:
     return datetime.now(IST_ZONE).strftime("%Y-%m-%d %H:%M:%S IST")
 
 
+def smtp_configured() -> bool:
+    required = [
+        SMTP_HOST_SECRET,
+        SMTP_PORT_SECRET,
+        SMTP_USERNAME_SECRET,
+        SMTP_PASSWORD_SECRET,
+    ]
+    return all(str(st.secrets.get(key, "")).strip() for key in required)
+
+
+def smtp_port() -> int:
+    try:
+        return int(st.secrets.get(SMTP_PORT_SECRET, 587))
+    except (TypeError, ValueError):
+        return 587
+
+
+def smtp_from_email() -> str:
+    value = str(st.secrets.get(SMTP_FROM_EMAIL_SECRET, "")).strip()
+    return value or str(st.secrets.get(SMTP_USERNAME_SECRET, "")).strip() or CONTACT_EMAIL
+
+
+def smtp_from_name() -> str:
+    value = str(st.secrets.get(SMTP_FROM_NAME_SECRET, "")).strip()
+    return value or "Matrika Academy"
+
+
+def send_confirmation_email(
+    *,
+    to_email: str,
+    recipient_name: str,
+    subject: str,
+    submission_title: str,
+    details: list[tuple[str, object]],
+    next_steps: str,
+) -> tuple[bool, str]:
+    if not smtp_configured():
+        return False, "Email confirmations are not configured yet."
+
+    detail_lines = [f"- {label}: {value}" for label, value in details if str(value).strip()]
+    body_lines = [
+        f"Hi {recipient_name or 'there'},",
+        "",
+        f"We have received your {submission_title} submission at Matrika Academy.",
+        "",
+        "Details:",
+        *detail_lines,
+        "",
+        next_steps,
+        "",
+        f"Support email: {CONTACT_EMAIL}",
+        f"Support phone: {CONTACT_PHONE}",
+        "",
+        "Matrika Academy",
+    ]
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = f"{smtp_from_name()} <{smtp_from_email()}>"
+    message["To"] = to_email
+    message["Reply-To"] = CONTACT_EMAIL
+    message.set_content("\n".join(body_lines))
+
+    host = str(st.secrets.get(SMTP_HOST_SECRET, "")).strip()
+    username = str(st.secrets.get(SMTP_USERNAME_SECRET, "")).strip()
+    password = str(st.secrets.get(SMTP_PASSWORD_SECRET, "")).strip()
+    port = smtp_port()
+
+    try:
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port, timeout=20) as server:
+                server.login(username, password)
+                server.send_message(message)
+        else:
+            with smtplib.SMTP(host, port, timeout=20) as server:
+                server.ehlo()
+                server.starttls(context=ssl.create_default_context())
+                server.ehlo()
+                server.login(username, password)
+                server.send_message(message)
+    except Exception as exc:
+        return False, f"Confirmation email could not be sent: {exc}"
+
+    return True, f"Confirmation email sent to {to_email}."
+
+
+def render_confirmation_result(result: tuple[bool, str]) -> None:
+    delivered, message = result
+    if delivered:
+        st.info(message)
+    elif "not configured yet" in message:
+        st.caption("Confirmation emails will start once SMTP secrets are added.")
+    else:
+        st.warning(message)
+
+
 def worksheet_name_for(csv_name: str) -> str:
     schema = SUBMISSION_SCHEMAS.get(csv_name)
     if schema:
@@ -708,6 +813,12 @@ def storage_status_lines() -> list[str]:
         lines.append("Admin password is configured.")
     else:
         lines.append(f"Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets to protect the admin page.")
+    if smtp_configured():
+        lines.append("Email confirmations are configured.")
+    else:
+        lines.append(
+            f"Add `{SMTP_HOST_SECRET}`, `{SMTP_PORT_SECRET}`, `{SMTP_USERNAME_SECRET}`, and `{SMTP_PASSWORD_SECRET}` to send confirmations."
+        )
     return lines
 
 
@@ -1638,6 +1749,22 @@ def admissions_page() -> None:
                         },
                     )
                     st.success("Your request was saved. We will contact you shortly.")
+                    render_confirmation_result(
+                        send_confirmation_email(
+                            to_email=clean_email,
+                            recipient_name=clean_name,
+                            subject="Matrika Academy admission request received",
+                            submission_title="admissions request",
+                            details=[
+                                ("Submitted at", current_timestamp()),
+                                ("Track", track),
+                                ("Learner stage", learner_stage),
+                                ("Preferred mode", mode),
+                                ("Preferred time", preferred_time),
+                            ],
+                            next_steps="We will review your request and contact you with the best batch or session plan.",
+                        )
+                    )
 
 
 def live_studio_page() -> None:
@@ -1749,6 +1876,20 @@ def live_studio_page() -> None:
                         },
                     )
                     st.success("Attendance saved.")
+                    render_confirmation_result(
+                        send_confirmation_email(
+                            to_email=clean_email,
+                            recipient_name=clean_name,
+                            subject="Matrika Academy attendance recorded",
+                            submission_title="attendance update",
+                            details=[
+                                ("Submitted at", current_timestamp()),
+                                ("Session", session),
+                                ("Mode", mode),
+                            ],
+                            next_steps="Your attendance has been recorded. If you need the replay or a class link, reply to this email.",
+                        )
+                    )
 
 
 def certification_page() -> None:
@@ -1805,6 +1946,19 @@ def certification_page() -> None:
                         },
                     )
                     st.success("Application received. Mentors will reach out.")
+                    render_confirmation_result(
+                        send_confirmation_email(
+                            to_email=clean_email,
+                            recipient_name=clean_name,
+                            subject="Matrika Academy certification application received",
+                            submission_title="certification application",
+                            details=[
+                                ("Submitted at", current_timestamp()),
+                                ("Experience", experience),
+                            ],
+                            next_steps="Our mentors will review your application and reach out with the next steps.",
+                        )
+                    )
 
 
 def kids_page() -> None:
@@ -1870,6 +2024,20 @@ def kids_page() -> None:
                     },
                 )
                 st.success("Enquiry received. We will share the kids schedule and links.")
+                render_confirmation_result(
+                    send_confirmation_email(
+                        to_email=clean_email,
+                        recipient_name=clean_parent,
+                        subject="Matrika Academy kids studio enquiry received",
+                        submission_title="kids studio enquiry",
+                        details=[
+                            ("Submitted at", current_timestamp()),
+                            ("Child name", clean_child),
+                            ("Age", age),
+                        ],
+                        next_steps="We will share the kids schedule, available session options, and joining details soon.",
+                    )
+                )
 
 
 def payments_page() -> None:
@@ -1943,6 +2111,22 @@ def payments_page() -> None:
                     },
                 )
                 st.success("Payment recorded. We will verify and confirm your seat.")
+                render_confirmation_result(
+                    send_confirmation_email(
+                        to_email=clean_email,
+                        recipient_name=clean_name,
+                        subject="Matrika Academy payment proof received",
+                        submission_title="payment proof",
+                        details=[
+                            ("Submitted at", current_timestamp()),
+                            ("Plan", plan),
+                            ("Amount", f"INR {amount}"),
+                            ("Method", method),
+                            ("Reference", clean_reference),
+                        ],
+                        next_steps="We will verify the payment and confirm your seat on email or WhatsApp.",
+                    )
+                )
 
 
 def contact_page() -> None:
@@ -1996,6 +2180,19 @@ def contact_page() -> None:
                         },
                     )
                     st.success("Message sent. We will reply soon.")
+                    render_confirmation_result(
+                        send_confirmation_email(
+                            to_email=clean_email,
+                            recipient_name=clean_name,
+                            subject="Matrika Academy message received",
+                            submission_title="support message",
+                            details=[
+                                ("Submitted at", current_timestamp()),
+                                ("Message", clean_message),
+                            ],
+                            next_steps="We have received your message and will reply as soon as possible.",
+                        )
+                    )
 
 
 def admin_page() -> None:
