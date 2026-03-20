@@ -5,6 +5,7 @@ import html
 import io
 import json
 import re
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -404,10 +405,10 @@ def get_google_spreadsheet():
     if not raw_secret or not sheet_id:
         return None
 
-    if isinstance(raw_secret, dict):
-        service_account_info = raw_secret
+    if isinstance(raw_secret, Mapping):
+        service_account_info = dict(raw_secret)
     else:
-        service_account_info = json.loads(raw_secret)
+        service_account_info = parse_service_account_secret(str(raw_secret))
 
     credentials = Credentials.from_service_account_info(
         service_account_info,
@@ -415,6 +416,27 @@ def get_google_spreadsheet():
     )
     client = gspread.authorize(credentials)
     return client.open_by_key(str(sheet_id))
+
+
+def parse_service_account_secret(raw_secret: str) -> dict:
+    try:
+        return json.loads(raw_secret)
+    except json.JSONDecodeError:
+        pass
+
+    # Streamlit multiline strings can turn the private key's escaped newlines
+    # into literal newlines. Re-escape just that field and try JSON again.
+    fixed_secret = re.sub(
+        r'("private_key"\s*:\s*")(.*?)(",\s*"client_email")',
+        lambda match: (
+            match.group(1)
+            + match.group(2).replace("\\", "\\\\").replace("\n", "\\n")
+            + match.group(3)
+        ),
+        raw_secret,
+        flags=re.DOTALL,
+    )
+    return json.loads(fixed_secret)
 
 
 def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
@@ -437,7 +459,7 @@ def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
             cols=max(20, len(row) + 2),
         )
 
-    if not worksheet.get_all_values():
+    if not worksheet.row_values(1):
         worksheet.append_row(list(row.keys()), value_input_option="RAW")
     worksheet.append_row([str(row[key]) for key in row.keys()], value_input_option="RAW")
     return True

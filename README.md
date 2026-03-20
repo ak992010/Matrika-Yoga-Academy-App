@@ -27,8 +27,22 @@ Deploy to Streamlit Community Cloud
 3. Add these secrets in the Streamlit Cloud secrets manager:
 ```toml
 google_sheet_id = "your-google-sheet-id"
-google_service_account_json = """{...full Google service account JSON...}"""
 admin_password = "choose-a-strong-password"
+
+[google_service_account_json]
+type = "service_account"
+project_id = "your-project-id"
+private_key_id = "replace-me"
+private_key = """-----BEGIN PRIVATE KEY-----
+REPLACE_ME
+-----END PRIVATE KEY-----
+"""
+client_email = "service-account@your-project.iam.gserviceaccount.com"
+client_id = "replace-me"
+auth_uri = "https://accounts.google.com/o/oauth2/auth"
+token_uri = "https://oauth2.googleapis.com/token"
+auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
+client_x509_cert_url = "https://www.googleapis.com/robot/v1/metadata/x509/service-account"
 ```
 4. Share the Google Sheet with the service account email from the JSON file.
 5. Redeploy the app. The sidebar will show whether persistent Google Sheets storage is active.
