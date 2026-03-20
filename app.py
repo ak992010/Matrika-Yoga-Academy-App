@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
@@ -27,6 +28,8 @@ GOOGLE_SHEETS_SCOPE = ("https://www.googleapis.com/auth/spreadsheets",)
 GOOGLE_SERVICE_ACCOUNT_SECRET = "google_service_account_json"
 GOOGLE_SHEET_ID_SECRET = "google_sheet_id"
 ADMIN_PASSWORD_SECRET = "admin_password"
+IST_ZONE = ZoneInfo("Asia/Kolkata")
+OVERVIEW_WORKSHEET = "Sheet1"
 
 SUBMISSION_SCHEMAS = {
     "bookings.csv": {
@@ -448,6 +451,10 @@ def google_persistence_enabled() -> bool:
     )
 
 
+def current_timestamp() -> str:
+    return datetime.now(IST_ZONE).strftime("%Y-%m-%d %H:%M:%S IST")
+
+
 def worksheet_name_for(csv_name: str) -> str:
     schema = SUBMISSION_SCHEMAS.get(csv_name)
     if schema:
@@ -547,22 +554,81 @@ def ensure_google_submission_sheets() -> None:
     for csv_name in SUBMISSION_SCHEMAS:
         ensure_google_worksheet(csv_name)
 
-    try:
-        overview = spreadsheet.worksheet("Sheet1")
-    except Exception:
+    update_google_overview_sheet(spreadsheet)
+
+
+def update_google_overview_sheet(spreadsheet=None) -> None:
+    if spreadsheet is None:
+        spreadsheet = get_google_spreadsheet()
+    if spreadsheet is None:
+        return
+
+    overview = get_overview_worksheet(spreadsheet)
+    if overview is None:
         return
 
     overview_rows = [
-        ["worksheet", "stores"],
-        *[
-            [config["worksheet"], config["label"]]
-            for config in SUBMISSION_SCHEMAS.values()
-        ],
+        ["worksheet", "stores", "saved_rows", "latest_submission"],
     ]
+    for csv_name, config in SUBMISSION_SCHEMAS.items():
+        worksheet = spreadsheet.worksheet(str(config["worksheet"]))
+        values = worksheet.get_all_values()
+        data_rows = values[1:] if values else []
+        latest_submission = data_rows[-1][0] if data_rows and data_rows[-1] else ""
+        overview_rows.append(
+            [
+                str(config["worksheet"]),
+                str(config["label"]),
+                str(len(data_rows)),
+                latest_submission,
+            ]
+        )
     current_values = overview.get_all_values()
     if current_values != overview_rows:
         overview.clear()
         overview.update("A1", overview_rows, value_input_option="RAW")
+
+
+def update_google_overview_row(csv_name: str, latest_submission: str, spreadsheet=None, worksheet=None) -> None:
+    if spreadsheet is None:
+        spreadsheet = get_google_spreadsheet()
+    if spreadsheet is None:
+        return
+
+    overview = get_overview_worksheet(spreadsheet)
+    if overview is None:
+        return
+
+    schema_items = list(SUBMISSION_SCHEMAS.items())
+    row_index = next(
+        (index + 2 for index, (name, _) in enumerate(schema_items) if name == csv_name),
+        None,
+    )
+    if row_index is None:
+        return
+
+    config = SUBMISSION_SCHEMAS[csv_name]
+    if worksheet is None:
+        worksheet = spreadsheet.worksheet(str(config["worksheet"]))
+    saved_rows = max(len(worksheet.col_values(1)) - 1, 0)
+    overview.update(
+        f"A{row_index}:D{row_index}",
+        [[str(config["worksheet"]), str(config["label"]), str(saved_rows), latest_submission]],
+        value_input_option="RAW",
+    )
+
+
+def get_overview_worksheet(spreadsheet):
+    import gspread
+
+    try:
+        return spreadsheet.worksheet(OVERVIEW_WORKSHEET)
+    except gspread.WorksheetNotFound:
+        return spreadsheet.add_worksheet(
+            title=OVERVIEW_WORKSHEET,
+            rows=max(20, len(SUBMISSION_SCHEMAS) + 5),
+            cols=6,
+        )
 
 
 def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
@@ -577,6 +643,7 @@ def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
     if not headers:
         headers = list(row.keys())
     worksheet.append_row([str(row.get(key, "")) for key in headers], value_input_option="RAW")
+    update_google_overview_row(csv_name, str(row.get("submitted_at", "")), worksheet=worksheet)
     return True
 
 
@@ -612,7 +679,7 @@ def read_google_rows(csv_name: str) -> list[dict[str, str]]:
 
     import gspread
 
-    worksheet_name = Path(csv_name).stem
+    worksheet_name = worksheet_name_for(csv_name)
     try:
         worksheet = spreadsheet.worksheet(worksheet_name)
     except gspread.WorksheetNotFound:
@@ -1557,7 +1624,7 @@ def admissions_page() -> None:
                     save_row(
                         "bookings.csv",
                         {
-                            "submitted_at": datetime.now().isoformat(timespec="seconds"),
+                            "submitted_at": current_timestamp(),
                             "page": "Admissions",
                             "name": clean_name,
                             "email": clean_email,
@@ -1673,7 +1740,7 @@ def live_studio_page() -> None:
                     save_row(
                         "attendance.csv",
                         {
-                            "submitted_at": datetime.now().isoformat(timespec="seconds"),
+                            "submitted_at": current_timestamp(),
                             "page": "Live Studio",
                             "name": clean_name,
                             "email": clean_email,
@@ -1729,7 +1796,7 @@ def certification_page() -> None:
                     save_row(
                         "training_applications.csv",
                         {
-                            "submitted_at": datetime.now().isoformat(timespec="seconds"),
+                            "submitted_at": current_timestamp(),
                             "page": "Certification",
                             "name": clean_name,
                             "email": clean_email,
@@ -1794,7 +1861,7 @@ def kids_page() -> None:
                 save_row(
                     "kids_enquiries.csv",
                     {
-                        "submitted_at": datetime.now().isoformat(timespec="seconds"),
+                        "submitted_at": current_timestamp(),
                         "page": "Kids Studio",
                         "parent": clean_parent,
                         "child": clean_child,
@@ -1864,7 +1931,7 @@ def payments_page() -> None:
                 save_row(
                     "payments.csv",
                     {
-                        "submitted_at": datetime.now().isoformat(timespec="seconds"),
+                        "submitted_at": current_timestamp(),
                         "page": "Payments",
                         "name": clean_name,
                         "email": clean_email,
@@ -1921,7 +1988,7 @@ def contact_page() -> None:
                     save_row(
                         "contact_messages.csv",
                         {
-                            "submitted_at": datetime.now().isoformat(timespec="seconds"),
+                            "submitted_at": current_timestamp(),
                             "page": "Contact",
                             "name": clean_name,
                             "email": clean_email,
@@ -2062,7 +2129,9 @@ def initialize_state() -> None:
 def main() -> None:
     apply_theme()
     initialize_state()
-    ensure_google_submission_sheets()
+    if google_persistence_enabled() and not st.session_state.get("google_sheet_setup_ready", False):
+        ensure_google_submission_sheets()
+        st.session_state.google_sheet_setup_ready = True
     render_sidebar()
     PAGE_ROUTES[st.session_state.page]()
 
