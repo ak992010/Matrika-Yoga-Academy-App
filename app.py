@@ -491,6 +491,14 @@ def smtp_from_name() -> str:
     return value or "Matrika Academy"
 
 
+def smtp_password() -> str:
+    password = str(st.secrets.get(SMTP_PASSWORD_SECRET, "")).strip()
+    host = str(st.secrets.get(SMTP_HOST_SECRET, "")).strip().lower()
+    if "gmail.com" in host:
+        return password.replace(" ", "")
+    return password
+
+
 def send_confirmation_email(
     *,
     to_email: str,
@@ -529,7 +537,7 @@ def send_confirmation_email(
 
     host = str(st.secrets.get(SMTP_HOST_SECRET, "")).strip()
     username = str(st.secrets.get(SMTP_USERNAME_SECRET, "")).strip()
-    password = str(st.secrets.get(SMTP_PASSWORD_SECRET, "")).strip()
+    password = smtp_password()
     port = smtp_port()
 
     try:
