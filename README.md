@@ -33,3 +33,17 @@ admin_password = "choose-a-strong-password"
 4. Share the Google Sheet with the service account email from the JSON file.
 5. Redeploy the app. The sidebar will show whether persistent Google Sheets storage is active.
 6. Open the `Admin` page in the app and unlock it with `admin_password` to review submissions.
+
+Google Sheets setup checklist
+1. Create a Google Sheet that will hold the form data.
+2. Copy the sheet ID from the browser URL.
+3. Create a Google Cloud service account with Google Sheets API access.
+4. Download the service account JSON key.
+5. Share the Google Sheet with the `client_email` from that JSON file.
+6. Paste the values into Streamlit secrets using `.streamlit/secrets.example.toml` as the template.
+7. Open the deployed app, submit one test form, then confirm the row appears in the Google Sheet and the `Admin` page.
+
+Admin tools
+- The `Admin` page can be protected with `admin_password`.
+- It shows storage status, counts per submission source, recent rows, and a CSV download for the selected form.
+- When Google Sheets is active, it also shows a direct button to open the connected spreadsheet.

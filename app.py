@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import html
+import io
 import json
 import re
 from datetime import datetime
@@ -512,6 +513,25 @@ def storage_status_lines() -> list[str]:
     else:
         lines.append(f"Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets to protect the admin page.")
     return lines
+
+
+def google_sheet_url() -> str | None:
+    sheet_id = str(st.secrets.get(GOOGLE_SHEET_ID_SECRET, "")).strip()
+    if not sheet_id:
+        return None
+    return f"https://docs.google.com/spreadsheets/d/{sheet_id}"
+
+
+def rows_to_csv_bytes(rows: list[dict[str, str]]) -> bytes:
+    if not rows:
+        return b""
+
+    buffer = io.StringIO()
+    fieldnames = list(rows[0].keys())
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
+    return buffer.getvalue().encode("utf-8")
 
 
 def save_row(csv_name: str, row: dict) -> None:
@@ -1849,6 +1869,13 @@ def admin_page() -> None:
         },
     ]
     render_metric_grid(metrics)
+    source_summary = [
+        {"source": name, "rows": len(load_submission_rows(name))}
+        for name in submission_files
+    ]
+    if source_summary:
+        st.caption("Submission summary")
+        st.dataframe(source_summary, use_container_width=True, hide_index=True)
     st.divider()
 
     if not submission_files:
@@ -1861,6 +1888,23 @@ def admin_page() -> None:
     if not rows:
         st.info(f"No entries found in `{selected_file}` yet.")
         return
+
+    action_cols = st.columns([0.4, 0.3, 0.3])
+    with action_cols[0]:
+        st.download_button(
+            "Download CSV",
+            data=rows_to_csv_bytes(rows),
+            file_name=selected_file,
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with action_cols[1]:
+        sheet_url = google_sheet_url()
+        if sheet_url:
+            st.link_button("Open Google Sheet", sheet_url, use_container_width=True)
+    with action_cols[2]:
+        if st.button("Refresh data", use_container_width=True):
+            st.rerun()
 
     st.caption(f"{len(rows)} saved entries in `{selected_file}`")
     st.dataframe(rows[::-1], use_container_width=True, hide_index=True)
