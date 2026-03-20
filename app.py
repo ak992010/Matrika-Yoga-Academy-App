@@ -24,6 +24,7 @@ CONTACT_EMAIL = "drpeddamandadi@gmail.com"
 GOOGLE_SHEETS_SCOPE = ("https://www.googleapis.com/auth/spreadsheets",)
 GOOGLE_SERVICE_ACCOUNT_SECRET = "google_service_account_json"
 GOOGLE_SHEET_ID_SECRET = "google_sheet_id"
+ADMIN_PASSWORD_SECRET = "admin_password"
 
 PAGE_NAMES = [
     "Dashboard",
@@ -35,6 +36,7 @@ PAGE_NAMES = [
     "Kids Studio",
     "Payments",
     "Contact",
+    "Admin",
 ]
 
 HOME_STATS = [
@@ -389,20 +391,17 @@ def google_persistence_enabled() -> bool:
     )
 
 
-def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
-    if not google_persistence_enabled():
-        return False
-
+def get_google_spreadsheet():
     try:
         import gspread
         from google.oauth2.service_account import Credentials
     except ImportError:
-        return False
+        return None
 
     raw_secret = st.secrets.get(GOOGLE_SERVICE_ACCOUNT_SECRET, "")
     sheet_id = st.secrets.get(GOOGLE_SHEET_ID_SECRET, "")
     if not raw_secret or not sheet_id:
-        return False
+        return None
 
     if isinstance(raw_secret, dict):
         service_account_info = raw_secret
@@ -414,9 +413,20 @@ def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
         scopes=list(GOOGLE_SHEETS_SCOPE),
     )
     client = gspread.authorize(credentials)
-    spreadsheet = client.open_by_key(str(sheet_id))
+    return client.open_by_key(str(sheet_id))
+
+
+def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
+    if not google_persistence_enabled():
+        return False
+
+    spreadsheet = get_google_spreadsheet()
+    if spreadsheet is None:
+        return False
 
     worksheet_name = Path(csv_name).stem
+    import gspread
+
     try:
         worksheet = spreadsheet.worksheet(worksheet_name)
     except gspread.WorksheetNotFound:
@@ -430,6 +440,78 @@ def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
         worksheet.append_row(list(row.keys()), value_input_option="RAW")
     worksheet.append_row([str(row[key]) for key in row.keys()], value_input_option="RAW")
     return True
+
+
+def admin_password_configured() -> bool:
+    return bool(str(st.secrets.get(ADMIN_PASSWORD_SECRET, "")).strip())
+
+
+def admin_authenticated() -> bool:
+    return bool(st.session_state.get("admin_authenticated", False))
+
+
+def list_submission_sources() -> list[str]:
+    names = {path.name for path in DATA_DIR.glob("*.csv")}
+    if google_persistence_enabled():
+        sheet_names = [
+            "bookings.csv",
+            "attendance.csv",
+            "training_applications.csv",
+            "kids_enquiries.csv",
+            "payments.csv",
+            "contact_messages.csv",
+        ]
+        names.update(sheet_names)
+    return sorted(names)
+
+
+def read_local_rows(csv_name: str) -> list[dict[str, str]]:
+    file_path = DATA_DIR / csv_name
+    if not file_path.exists():
+        return []
+    with file_path.open("r", newline="", encoding="utf-8") as handle:
+        return list(csv.DictReader(handle))
+
+
+def read_google_rows(csv_name: str) -> list[dict[str, str]]:
+    if not google_persistence_enabled():
+        return []
+    spreadsheet = get_google_spreadsheet()
+    if spreadsheet is None:
+        return []
+
+    import gspread
+
+    worksheet_name = Path(csv_name).stem
+    try:
+        worksheet = spreadsheet.worksheet(worksheet_name)
+    except gspread.WorksheetNotFound:
+        return []
+    values = worksheet.get_all_records()
+    return [{str(key): str(value) for key, value in row.items()} for row in values]
+
+
+def load_submission_rows(csv_name: str) -> list[dict[str, str]]:
+    google_rows = read_google_rows(csv_name)
+    if google_rows:
+        return google_rows
+    return read_local_rows(csv_name)
+
+
+def storage_status_lines() -> list[str]:
+    lines = []
+    if google_persistence_enabled():
+        lines.append("Google Sheets persistence is active.")
+    else:
+        lines.append("Google Sheets persistence is not configured yet.")
+        lines.append(
+            f"Add `{GOOGLE_SHEET_ID_SECRET}` and `{GOOGLE_SERVICE_ACCOUNT_SECRET}` in Streamlit secrets."
+        )
+    if admin_password_configured():
+        lines.append("Admin password is configured.")
+    else:
+        lines.append(f"Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets to protect the admin page.")
+    return lines
 
 
 def save_row(csv_name: str, row: dict) -> None:
@@ -1700,6 +1782,90 @@ def contact_page() -> None:
                     st.success("Message sent. We will reply soon.")
 
 
+def admin_page() -> None:
+    render_section(
+        "Admin",
+        "See submission flow, storage status, and recent entries.",
+        "This view is meant for the Matrika team to monitor enquiries and confirm that persistence is working.",
+    )
+
+    if not admin_authenticated():
+        render_card(
+            "Protected area",
+            "Enter the admin password to view stored enquiries, payments, and attendance records.",
+            kicker="Access",
+            meta=["Password required"],
+            class_name="info-card",
+        )
+        if not admin_password_configured():
+            st.warning(
+                f"The admin page is not fully protected yet. Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets."
+            )
+        with st.form("admin_login_form"):
+            password = st.text_input("Admin password", type="password")
+            submit = st.form_submit_button("Unlock admin")
+            if submit:
+                expected = str(st.secrets.get(ADMIN_PASSWORD_SECRET, "")).strip()
+                if not expected:
+                    st.error("Admin password is not configured in Streamlit secrets yet.")
+                elif password == expected:
+                    st.session_state.admin_authenticated = True
+                    st.rerun()
+                else:
+                    st.error("Incorrect admin password.")
+        return
+
+    top_actions = st.columns([0.75, 0.25])
+    with top_actions[1]:
+        if st.button("Lock admin", use_container_width=True):
+            st.session_state.admin_authenticated = False
+            st.rerun()
+
+    render_card(
+        "Storage status",
+        "Use this view to confirm that cloud persistence and admin protection are set up correctly.",
+        kicker="Status",
+        meta=storage_status_lines(),
+        class_name="info-card",
+    )
+
+    submission_files = list_submission_sources()
+    total_rows = sum(len(load_submission_rows(name)) for name in submission_files)
+    metrics = [
+        {
+            "label": "Submission sources",
+            "value": str(len(submission_files)),
+            "note": "Forms currently tracked",
+        },
+        {
+            "label": "Saved rows",
+            "value": str(total_rows),
+            "note": "Across all forms",
+        },
+        {
+            "label": "Persistence",
+            "value": "Google Sheets" if google_persistence_enabled() else "Local CSV",
+            "note": "Current primary storage",
+        },
+    ]
+    render_metric_grid(metrics)
+    st.divider()
+
+    if not submission_files:
+        st.info("No submission files exist yet. Once users start sending forms, they will appear here.")
+        return
+
+    selected_file = st.selectbox("Submission source", submission_files)
+    rows = load_submission_rows(selected_file)
+
+    if not rows:
+        st.info(f"No entries found in `{selected_file}` yet.")
+        return
+
+    st.caption(f"{len(rows)} saved entries in `{selected_file}`")
+    st.dataframe(rows[::-1], use_container_width=True, hide_index=True)
+
+
 PAGE_ROUTES = {
     "Dashboard": dashboard_page,
     "Programs": programs_page,
@@ -1710,6 +1876,7 @@ PAGE_ROUTES = {
     "Kids Studio": kids_page,
     "Payments": payments_page,
     "Contact": contact_page,
+    "Admin": admin_page,
 }
 
 
