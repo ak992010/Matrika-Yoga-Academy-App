@@ -28,6 +28,61 @@ GOOGLE_SERVICE_ACCOUNT_SECRET = "google_service_account_json"
 GOOGLE_SHEET_ID_SECRET = "google_sheet_id"
 ADMIN_PASSWORD_SECRET = "admin_password"
 
+SUBMISSION_SCHEMAS = {
+    "bookings.csv": {
+        "worksheet": "bookings",
+        "label": "Admissions requests",
+        "headers": [
+            "submitted_at",
+            "page",
+            "name",
+            "email",
+            "phone",
+            "track",
+            "learner_stage",
+            "mode",
+            "preferred_time",
+            "goals",
+            "notes",
+        ],
+    },
+    "attendance.csv": {
+        "worksheet": "attendance",
+        "label": "Live attendance",
+        "headers": ["submitted_at", "page", "name", "email", "session", "mode"],
+    },
+    "training_applications.csv": {
+        "worksheet": "training_applications",
+        "label": "Certification applications",
+        "headers": ["submitted_at", "page", "name", "email", "experience", "motivation"],
+    },
+    "kids_enquiries.csv": {
+        "worksheet": "kids_enquiries",
+        "label": "Kids studio enquiries",
+        "headers": ["submitted_at", "page", "parent", "child", "age", "email"],
+    },
+    "payments.csv": {
+        "worksheet": "payments",
+        "label": "Payment proofs",
+        "headers": [
+            "submitted_at",
+            "page",
+            "name",
+            "email",
+            "plan",
+            "amount",
+            "method",
+            "reference",
+            "notes",
+        ],
+    },
+    "contact_messages.csv": {
+        "worksheet": "contact_messages",
+        "label": "Contact messages",
+        "headers": ["submitted_at", "page", "name", "email", "message"],
+    },
+}
+
 PAGE_NAMES = [
     "Dashboard",
     "Programs",
@@ -393,6 +448,22 @@ def google_persistence_enabled() -> bool:
     )
 
 
+def worksheet_name_for(csv_name: str) -> str:
+    schema = SUBMISSION_SCHEMAS.get(csv_name)
+    if schema:
+        return str(schema["worksheet"])
+    return Path(csv_name).stem
+
+
+def worksheet_headers_for(csv_name: str, row: dict | None = None) -> list[str]:
+    schema = SUBMISSION_SCHEMAS.get(csv_name)
+    if schema:
+        return list(schema["headers"])
+    if row:
+        return list(row.keys())
+    return []
+
+
 def get_google_spreadsheet():
     try:
         import gspread
@@ -439,15 +510,13 @@ def parse_service_account_secret(raw_secret: str) -> dict:
     return json.loads(fixed_secret)
 
 
-def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
-    if not google_persistence_enabled():
-        return False
-
+def ensure_google_worksheet(csv_name: str, row: dict | None = None):
     spreadsheet = get_google_spreadsheet()
     if spreadsheet is None:
-        return False
+        return None
 
-    worksheet_name = Path(csv_name).stem
+    headers = worksheet_headers_for(csv_name, row)
+    worksheet_name = worksheet_name_for(csv_name)
     import gspread
 
     try:
@@ -455,13 +524,59 @@ def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
     except gspread.WorksheetNotFound:
         worksheet = spreadsheet.add_worksheet(
             title=worksheet_name,
-            rows=1000,
-            cols=max(20, len(row) + 2),
+            rows=max(1000, len(headers) + 10),
+            cols=max(20, len(headers) + 2),
         )
 
-    if not worksheet.row_values(1):
-        worksheet.append_row(list(row.keys()), value_input_option="RAW")
-    worksheet.append_row([str(row[key]) for key in row.keys()], value_input_option="RAW")
+    if headers and worksheet.row_values(1) != headers:
+        if any(worksheet.row_values(1)):
+            worksheet.insert_row(headers, index=1, value_input_option="RAW")
+        else:
+            worksheet.update("A1", [headers], value_input_option="RAW")
+    return worksheet
+
+
+def ensure_google_submission_sheets() -> None:
+    if not google_persistence_enabled():
+        return
+
+    spreadsheet = get_google_spreadsheet()
+    if spreadsheet is None:
+        return
+
+    for csv_name in SUBMISSION_SCHEMAS:
+        ensure_google_worksheet(csv_name)
+
+    try:
+        overview = spreadsheet.worksheet("Sheet1")
+    except Exception:
+        return
+
+    overview_rows = [
+        ["worksheet", "stores"],
+        *[
+            [config["worksheet"], config["label"]]
+            for config in SUBMISSION_SCHEMAS.values()
+        ],
+    ]
+    current_values = overview.get_all_values()
+    if current_values != overview_rows:
+        overview.clear()
+        overview.update("A1", overview_rows, value_input_option="RAW")
+
+
+def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
+    if not google_persistence_enabled():
+        return False
+
+    worksheet = ensure_google_worksheet(csv_name, row)
+    if worksheet is None:
+        return False
+
+    headers = worksheet_headers_for(csv_name, row)
+    if not headers:
+        headers = list(row.keys())
+    worksheet.append_row([str(row.get(key, "")) for key in headers], value_input_option="RAW")
     return True
 
 
@@ -476,15 +591,7 @@ def admin_authenticated() -> bool:
 def list_submission_sources() -> list[str]:
     names = {path.name for path in DATA_DIR.glob("*.csv")}
     if google_persistence_enabled():
-        sheet_names = [
-            "bookings.csv",
-            "attendance.csv",
-            "training_applications.csv",
-            "kids_enquiries.csv",
-            "payments.csv",
-            "contact_messages.csv",
-        ]
-        names.update(sheet_names)
+        names.update(SUBMISSION_SCHEMAS.keys())
     return sorted(names)
 
 
@@ -1955,6 +2062,7 @@ def initialize_state() -> None:
 def main() -> None:
     apply_theme()
     initialize_state()
+    ensure_google_submission_sheets()
     render_sidebar()
     PAGE_ROUTES[st.session_state.page]()
 
