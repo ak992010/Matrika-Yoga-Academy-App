@@ -1147,6 +1147,19 @@ def format_timestamp(moment: datetime) -> str:
     return moment.astimezone(IST_ZONE).strftime("%Y-%m-%d %H:%M:%S IST")
 
 
+def log_runtime_issue(message: str) -> None:
+    text = normalize_text(message)
+    if not text:
+        return
+    try:
+        notices = list(st.session_state.get("runtime_issues", []))
+        notices.append({"at": current_timestamp(), "message": text})
+        st.session_state.runtime_issues = notices[-20:]
+    except Exception:
+        pass
+    print(text)
+
+
 def parse_timestamp(value: str) -> datetime | None:
     text = str(value).strip()
     if not text:
@@ -1260,7 +1273,8 @@ def render_confirmation_result(result: tuple[bool, str]) -> None:
     elif "not configured yet" in message:
         st.caption("Confirmation emails will start once SMTP secrets are added.")
     else:
-        st.warning(message)
+        log_runtime_issue(message)
+        st.caption("Email delivery is temporarily unavailable. Your request is still saved in the academy.")
 
 
 def send_automatic_reply(
@@ -1560,11 +1574,28 @@ def read_google_rows(csv_name: str) -> list[dict[str, str]]:
     return [{str(key): str(value) for key, value in row.items()} for row in values]
 
 
+def write_local_rows(csv_name: str, rows: list[dict[str, object]]) -> None:
+    file_path = DATA_DIR / csv_name
+    headers = worksheet_headers_for(csv_name, rows[0] if rows else None)
+    if not headers and rows:
+        headers = list(rows[0].keys())
+    with file_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=headers)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: row.get(key, "") for key in headers})
+
+
 def load_submission_rows(csv_name: str) -> list[dict[str, str]]:
+    local_rows = read_local_rows(csv_name)
+    if local_rows:
+        return local_rows
+
     google_rows = read_google_rows(csv_name)
     if google_rows:
+        write_local_rows(csv_name, google_rows)
         return google_rows
-    return read_local_rows(csv_name)
+    return []
 
 
 def storage_status_lines() -> list[str]:
@@ -1620,11 +1651,7 @@ def save_row(csv_name: str, row: dict) -> None:
     headers = worksheet_headers_for(csv_name, row)
     if not headers:
         headers = list(row.keys())
-    if google_persistence_enabled():
-        try:
-            append_row_to_google_sheet(csv_name, row)
-        except Exception as exc:
-            st.warning(f"Google Sheets sync failed for {csv_name}: {exc}")
+    wrote_local_row = False
 
     existing_rows: list[dict[str, str]] = []
     if file_path.exists():
@@ -1639,26 +1666,27 @@ def save_row(csv_name: str, row: dict) -> None:
                 for existing_row in existing_rows:
                     writer.writerow({key: existing_row.get(key, "") for key in headers})
                 writer.writerow({key: row.get(key, "") for key in headers})
-            return
+            wrote_local_row = True
 
-    with file_path.open("a", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=headers)
-        if not file_path.exists() or file_path.stat().st_size == 0:
-            writer.writeheader()
-        writer.writerow({key: row.get(key, "") for key in headers})
+    if not wrote_local_row:
+        with file_path.open("a", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=headers)
+            if not file_path.exists() or file_path.stat().st_size == 0:
+                writer.writeheader()
+            writer.writerow({key: row.get(key, "") for key in headers})
+
+    if google_persistence_enabled():
+        try:
+            append_row_to_google_sheet(csv_name, row)
+        except Exception as exc:
+            log_runtime_issue(f"Google Sheets sync failed for {csv_name}: {exc}")
 
 
 def replace_rows(csv_name: str, rows: list[dict[str, object]]) -> None:
-    file_path = DATA_DIR / csv_name
     headers = worksheet_headers_for(csv_name, rows[0] if rows else None)
     if not headers and rows:
         headers = list(rows[0].keys())
-
-    with file_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=headers)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({key: row.get(key, "") for key in headers})
+    write_local_rows(csv_name, rows)
 
     if not google_persistence_enabled():
         return
@@ -1677,7 +1705,7 @@ def replace_rows(csv_name: str, rows: list[dict[str, object]]) -> None:
         worksheet.update("A1", values, value_input_option="RAW")
         update_google_overview_sheet(spreadsheet)
     except Exception as exc:
-        st.warning(f"Google Sheets sync failed for {csv_name}: {exc}")
+        log_runtime_issue(f"Google Sheets sync failed for {csv_name}: {exc}")
 
 
 def learner_authenticated() -> bool:
@@ -2062,7 +2090,8 @@ def confirmation_flash_detail(result: tuple[bool, str] | None) -> str:
         return message
     if "not configured yet" in message:
         return "Confirmation emails will start once SMTP secrets are added."
-    return message
+    log_runtime_issue(message)
+    return "Email delivery is temporarily unavailable right now, but your academy request was still saved."
 
 
 def queue_flash_notice(kind: str, title: str, body: str, detail: str = "") -> None:
@@ -3999,6 +4028,20 @@ def account_page() -> None:
             "Verify by email and reset calmly",
             "We will send a short verification code to your learner email. Enter it below with a new password to restore access.",
         )
+        if not smtp_configured():
+            render_card(
+                "Password reset email is temporarily unavailable",
+                "The learner account is safe, but automated reset emails cannot be sent until academy mail delivery is reconnected. Use WhatsApp or email below and the team can help you restore access manually.",
+                kicker="Support fallback",
+                meta=["WhatsApp", "Email", "Manual recovery"],
+                class_name="info-card",
+            )
+            render_support_actions(
+                "Matrika Academy password help",
+                "Hi Matrika Academy, I need help restoring access to my learner account because the password reset email is not available right now.",
+                include_call=False,
+            )
+            st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
         default_reset_email = str(st.session_state.get("password_reset_email", "")).strip()
         reset_request_col, reset_verify_col = st.columns(2)
         with reset_request_col:
@@ -4013,6 +4056,8 @@ def account_page() -> None:
                         st.error("Enter the learner email linked to your account.")
                     elif not valid_email(clean_reset_email):
                         st.error("Enter a valid email address.")
+                    elif not smtp_configured():
+                        st.info("Password reset by email is temporarily unavailable. Please use WhatsApp or email support and the academy will help restore access.")
                     else:
                         account = find_user_account(clean_reset_email)
                         if not account:
@@ -4038,10 +4083,9 @@ def account_page() -> None:
                             delivered, message = reset_email_result
                             if delivered:
                                 st.success(f"Verification code sent to {clean_reset_email}.")
-                            elif "not configured yet" in message:
-                                st.warning("Password reset email could not be sent yet because SMTP is not configured.")
                             else:
-                                st.warning(message)
+                                log_runtime_issue(message)
+                                st.info("The verification email could not be sent right now. Please use academy support and we will help restore access.")
 
         with reset_verify_col:
             with st.form("password_reset_verify_form"):
@@ -5127,6 +5171,10 @@ def admin_page() -> None:
                     st.error("Incorrect admin password.")
         return
 
+    if google_persistence_enabled() and not st.session_state.get("admin_sheets_initialized", False):
+        ensure_google_submission_sheets()
+        st.session_state.admin_sheets_initialized = True
+
     top_actions = st.columns([0.75, 0.25])
     with top_actions[1]:
         if st.button("Lock admin", use_container_width=True):
@@ -5168,6 +5216,10 @@ def admin_page() -> None:
     if source_summary:
         st.caption("Submission summary")
         st.dataframe(source_summary, use_container_width=True, hide_index=True)
+    runtime_issues = list(st.session_state.get("runtime_issues", []))
+    if runtime_issues:
+        st.caption("Recent runtime notices")
+        st.dataframe(runtime_issues[::-1], use_container_width=True, hide_index=True)
     st.divider()
 
     if not submission_files:
@@ -5227,7 +5279,9 @@ def initialize_state() -> None:
     st.session_state.setdefault("learner_email", "")
     st.session_state.setdefault("learner_phone", "")
     st.session_state.setdefault("sheets_initialized", False)
+    st.session_state.setdefault("admin_sheets_initialized", False)
     st.session_state.setdefault("latest_razorpay_link", {})
+    st.session_state.setdefault("runtime_issues", [])
     if st.session_state.page not in PAGE_NAMES:
         st.session_state.page = PAGE_NAMES[0]
     if st.session_state.page in NAV_PAGE_NAMES:
@@ -5239,9 +5293,6 @@ def initialize_state() -> None:
 def main() -> None:
     apply_theme()
     initialize_state()
-    if google_persistence_enabled() and not st.session_state.get("sheets_initialized", False):
-        ensure_google_submission_sheets()
-        st.session_state.sheets_initialized = True
     render_sidebar()
     render_topbar()
     render_flash_notice()
