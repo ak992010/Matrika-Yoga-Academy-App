@@ -56,6 +56,7 @@ PRIMARY_PUBLIC_DOMAIN = "matrikayogaacademy.com"
 LEARNER_PASSWORD_MIN_LENGTH = 8
 USER_ACCOUNTS_CSV = "user_accounts.csv"
 AUTOMATED_REPLY_LOG_CSV = "reply_automation_logs.csv"
+PAGE_WIDGET_KEY = "page_selector"
 _ENSURED_WORKSHEETS: set[str] = set()
 
 SUBMISSION_SCHEMAS = {
@@ -1518,6 +1519,12 @@ def jump_to(page: str) -> None:
     st.session_state.page = page
 
 
+def sync_page_from_navigation() -> None:
+    selected_page = str(st.session_state.get(PAGE_WIDGET_KEY, PAGE_NAMES[0])).strip()
+    if selected_page in PAGE_NAMES:
+        st.session_state.page = selected_page
+
+
 @st.cache_data(show_spinner=False)
 def asset_data_uri(asset_path: str) -> str:
     path = Path(asset_path)
@@ -2914,8 +2921,9 @@ def render_sidebar() -> None:
             st.radio(
                 "Navigate",
                 NAV_PAGE_NAMES,
-                key="page",
+                key=PAGE_WIDGET_KEY,
                 label_visibility="collapsed",
+                on_change=sync_page_from_navigation,
             )
 
         st.markdown(
@@ -4457,6 +4465,7 @@ PAGE_ROUTES = {
 
 def initialize_state() -> None:
     st.session_state.setdefault("page", PAGE_NAMES[0])
+    st.session_state.setdefault(PAGE_WIDGET_KEY, PAGE_NAMES[0])
     st.session_state.setdefault("recent_submissions", {})
     st.session_state.setdefault("learner_authenticated", False)
     st.session_state.setdefault("learner_name", "")
@@ -4465,6 +4474,10 @@ def initialize_state() -> None:
     st.session_state.setdefault("sheets_initialized", False)
     if st.session_state.page not in PAGE_NAMES:
         st.session_state.page = PAGE_NAMES[0]
+    if st.session_state.page in NAV_PAGE_NAMES:
+        st.session_state[PAGE_WIDGET_KEY] = st.session_state.page
+    elif st.session_state.get(PAGE_WIDGET_KEY) not in NAV_PAGE_NAMES:
+        st.session_state[PAGE_WIDGET_KEY] = PAGE_NAMES[0]
 
 
 def main() -> None:
