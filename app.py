@@ -951,6 +951,21 @@ def queue_flash_notice(kind: str, title: str, body: str, detail: str = "") -> No
     }
 
 
+def render_page_loader(title: str = "Returning home", body: str = "Hold on while we refresh the academy home page.") -> None:
+    st.markdown(
+        f"""
+        <div class="page-loader-overlay">
+            <div class="page-loader-card">
+                <div class="page-loader-spinner"></div>
+                <div class="page-loader-title">{esc(title)}</div>
+                <div class="page-loader-copy">{esc(body)}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def send_user_home(
     *,
     kind: str,
@@ -959,6 +974,8 @@ def send_user_home(
     email_result: tuple[bool, str] | None = None,
 ) -> None:
     queue_flash_notice(kind, title, body, confirmation_flash_detail(email_result))
+    render_page_loader()
+    time.sleep(0.7)
     jump_to("Dashboard")
     st.rerun()
 
@@ -1229,6 +1246,59 @@ def apply_theme() -> None:
 
         .flash-banner-warning {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(250, 238, 228, 0.94));
+        }
+
+        .page-loader-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(255, 250, 244, 0.58);
+            backdrop-filter: blur(6px);
+        }
+
+        .page-loader-card {
+            min-width: min(92vw, 360px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.9rem;
+            text-align: center;
+            padding: 1.25rem 1.4rem;
+            border-radius: 28px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 24px 60px rgba(57, 38, 49, 0.18);
+        }
+
+        .page-loader-spinner {
+            width: 60px;
+            height: 60px;
+            border-radius: 999px;
+            border: 5px solid rgba(200, 111, 139, 0.18);
+            border-top-color: var(--rose);
+            border-right-color: var(--gold);
+            animation: matrika-spin 0.9s linear infinite;
+        }
+
+        .page-loader-title {
+            font-family: "Cormorant Garamond", serif;
+            font-size: 1.9rem;
+            line-height: 0.95;
+        }
+
+        .page-loader-copy {
+            color: var(--muted);
+            font-size: 0.96rem;
+            line-height: 1.55;
+        }
+
+        @keyframes matrika-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         .eyebrow {
