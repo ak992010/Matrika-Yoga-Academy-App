@@ -1,17 +1,17 @@
 <svg width="320" height="320" viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="matrikaBg" x1="42" y1="34" x2="276" y2="284" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#C86F8B"/>
-      <stop offset="1" stop-color="#CF9866"/>
+      <stop stop-color="#A8C97A"/>
+      <stop offset="1" stop-color="#4C6D3F"/>
     </linearGradient>
     <linearGradient id="matrikaAccent" x1="68" y1="88" x2="252" y2="246" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF8F3" stop-opacity="0.95"/>
-      <stop offset="1" stop-color="#F8EBDD" stop-opacity="0.78"/>
+      <stop stop-color="#FBFFF5" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#E7F1D9" stop-opacity="0.82"/>
     </linearGradient>
   </defs>
   <rect x="24" y="24" width="272" height="272" rx="80" fill="url(#matrikaBg)"/>
-  <rect x="44" y="44" width="232" height="232" rx="62" fill="url(#matrikaAccent)" fill-opacity="0.22" stroke="#FFFFFF" stroke-opacity="0.35"/>
+  <rect x="44" y="44" width="232" height="232" rx="62" fill="url(#matrikaAccent)" fill-opacity="0.22" stroke="#FFFFFF" stroke-opacity="0.36"/>
   <path d="M86 222V98H114L160 165L206 98H234V222H206V147L170 199H150L114 147V222H86Z" fill="white"/>
   <path d="M111 88C121 71 138 60 160 60C182 60 199 71 209 88" stroke="white" stroke-width="12" stroke-linecap="round"/>
-  <path d="M132 74C139 63 148 56 160 56C172 56 181 63 188 74" stroke="white" stroke-width="8" stroke-linecap="round" opacity="0.78"/>
+  <path d="M132 74C139 63 148 56 160 56C172 56 181 63 188 74" stroke="white" stroke-width="8" stroke-linecap="round" opacity="0.82"/>
 </svg>

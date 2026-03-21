@@ -27,6 +27,7 @@ APP_DIR = Path(__file__).parent
 DATA_DIR = APP_DIR / "submissions"
 DATA_DIR.mkdir(exist_ok=True)
 LOGO_PATH = APP_DIR / "assets" / "matrika_logo.svg"
+BUDDHA_BACKGROUND_PATH = APP_DIR / "assets" / "buddha_meditation.svg"
 LIVE_ZOOM_URL = "https://us04web.zoom.us/j/8048675666?pwd=KF3fzQ5y1ZaDibDafMrbWHyCHl2jqV.1"
 BACKUP_MEET_URL = ""
 REPLAY_DRIVE_URL = ""
@@ -1354,14 +1355,23 @@ def jump_to(page: str) -> None:
 
 
 @st.cache_data(show_spinner=False)
-def logo_data_uri() -> str:
-    if not LOGO_PATH.exists():
+def asset_data_uri(asset_path: str) -> str:
+    path = Path(asset_path)
+    if not path.exists():
         return ""
 
-    suffix = LOGO_PATH.suffix.lower()
+    suffix = path.suffix.lower()
     mime_type = "image/svg+xml" if suffix == ".svg" else "image/png"
-    encoded = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
+    encoded = base64.b64encode(path.read_bytes()).decode("utf-8")
     return f"data:{mime_type};base64,{encoded}"
+
+
+def logo_data_uri() -> str:
+    return asset_data_uri(str(LOGO_PATH))
+
+
+def buddha_background_data_uri() -> str:
+    return asset_data_uri(str(BUDDHA_BACKGROUND_PATH))
 
 
 def submission_signature(csv_name: str, row: dict) -> str:
@@ -1441,23 +1451,26 @@ def chips(items: list[str] | tuple[str, ...]) -> str:
 
 
 def apply_theme() -> None:
-    st.markdown(
-        """
+    buddha_background = buddha_background_data_uri()
+    css = """
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 
         :root {
-            --bg: #fffaf4;
-            --bg-soft: #f4eae0;
-            --ink: #2d2330;
-            --muted: #6b5d67;
-            --rose: #c86f8b;
-            --rose-strong: #a85977;
-            --gold: #cf9866;
-            --sage: #8fa68f;
-            --line: rgba(96, 72, 84, 0.16);
-            --card: rgba(255, 255, 255, 0.82);
-            --shadow: 0 18px 45px rgba(57, 38, 49, 0.12);
+            --bg: #f5f8ef;
+            --bg-soft: #e4eed9;
+            --bg-deep: #d6e6bf;
+            --ink: #203629;
+            --muted: #617767;
+            --pista: #a7c97a;
+            --pista-deep: #7fa956;
+            --forest: #4c6d3f;
+            --moss: #33512f;
+            --lotus: #fbfff5;
+            --mist: #edf5e4;
+            --line: rgba(76, 109, 63, 0.16);
+            --card: rgba(252, 255, 247, 0.8);
+            --shadow: 0 18px 45px rgba(60, 92, 47, 0.13);
         }
 
         * {
@@ -1472,11 +1485,37 @@ def apply_theme() -> None:
         }
 
         .stApp {
+            position: relative;
+            isolation: isolate;
             background:
-                radial-gradient(circle at 12% 18%, rgba(200, 111, 139, 0.16), transparent 25%),
-                radial-gradient(circle at 84% 8%, rgba(143, 166, 143, 0.18), transparent 23%),
-                radial-gradient(circle at 50% 100%, rgba(207, 152, 102, 0.14), transparent 28%),
-                linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
+                radial-gradient(circle at 10% 16%, rgba(167, 201, 122, 0.22), transparent 24%),
+                radial-gradient(circle at 84% 10%, rgba(127, 169, 86, 0.18), transparent 20%),
+                radial-gradient(circle at 50% 100%, rgba(214, 230, 191, 0.45), transparent 28%),
+                linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 56%, #f2f7ea 100%);
+        }
+
+        .stApp::before {
+            content: "";
+            position: fixed;
+            right: clamp(1rem, 3vw, 2.5rem);
+            bottom: clamp(0.75rem, 3.5vw, 2rem);
+            width: min(38vw, 430px);
+            height: min(60vw, 520px);
+            BUDDHA_BG_LAYER
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            background-size: contain;
+            opacity: 0.16;
+            pointer-events: none;
+            z-index: 0;
+            filter: drop-shadow(0 20px 34px rgba(76, 109, 63, 0.12));
+        }
+
+        [data-testid="stSidebar"],
+        [data-testid="stAppViewContainer"],
+        [data-testid="stHeader"] {
+            position: relative;
+            z-index: 1;
         }
 
         [data-testid="stHeader"] {
@@ -1504,8 +1543,9 @@ def apply_theme() -> None:
 
         [data-testid="stSidebar"] {
             background:
-                linear-gradient(180deg, rgba(255, 250, 245, 0.96), rgba(246, 234, 225, 0.94));
+                linear-gradient(180deg, rgba(248, 253, 241, 0.97), rgba(232, 241, 217, 0.95));
             border-right: 1px solid var(--line);
+            backdrop-filter: blur(12px);
         }
 
         [data-testid="stSidebar"] .block-container {
@@ -1526,8 +1566,9 @@ def apply_theme() -> None:
         .callout {
             background: var(--card);
             border: 1px solid var(--line);
-            border-radius: 24px;
+            border-radius: 26px;
             box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
         }
 
         .sidebar-card {
@@ -1544,9 +1585,9 @@ def apply_theme() -> None:
         .sidebar-brand img {
             width: 64px;
             height: 64px;
-            border-radius: 18px;
+            border-radius: 20px;
             object-fit: cover;
-            box-shadow: 0 12px 26px rgba(117, 79, 92, 0.16);
+            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.18);
         }
 
         .sidebar-brand h2 {
@@ -1580,13 +1621,13 @@ def apply_theme() -> None:
             height: 64px;
             display: grid;
             place-items: center;
-            border-radius: 18px;
-            background: linear-gradient(135deg, var(--rose), var(--gold));
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--pista), var(--forest));
             color: white;
             font-family: "Cormorant Garamond", serif;
             font-size: 2rem;
             font-weight: 700;
-            box-shadow: 0 12px 26px rgba(117, 79, 92, 0.16);
+            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.18);
         }
 
         .topbar-shell {
@@ -1595,19 +1636,19 @@ def apply_theme() -> None:
             align-items: center;
             justify-content: space-between;
             gap: 0.9rem 1.1rem;
-            padding: 0.95rem 1.1rem;
+            padding: 1rem 1.15rem;
             margin-bottom: 1rem;
-            border-radius: 28px;
+            border-radius: 30px;
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.84);
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.9), rgba(232, 241, 217, 0.86));
             box-shadow: var(--shadow);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
         }
 
         .topbar-brand {
             display: inline-flex;
             align-items: center;
-            gap: 0.9rem;
+            gap: 0.95rem;
             text-decoration: none;
             color: var(--ink) !important;
         }
@@ -1621,7 +1662,7 @@ def apply_theme() -> None:
             height: 58px;
             border-radius: 18px;
             object-fit: cover;
-            box-shadow: 0 12px 24px rgba(117, 79, 92, 0.16);
+            box-shadow: 0 12px 24px rgba(76, 109, 63, 0.16);
         }
 
         .brand-lockup {
@@ -1655,12 +1696,12 @@ def apply_theme() -> None:
             min-height: 2.5rem;
             padding: 0.55rem 0.9rem;
             border-radius: 999px;
-            border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid rgba(76, 109, 63, 0.18);
+            background: rgba(251, 255, 245, 0.92);
             color: var(--ink) !important;
             text-decoration: none;
             font-weight: 800;
-            box-shadow: 0 10px 20px rgba(63, 42, 51, 0.08);
+            box-shadow: 0 10px 20px rgba(76, 109, 63, 0.08);
         }
 
         .topbar-chip:hover {
@@ -1669,8 +1710,8 @@ def apply_theme() -> None:
         }
 
         .site-chip {
-            background: linear-gradient(135deg, rgba(200, 111, 139, 0.16), rgba(207, 152, 102, 0.18)) !important;
-            border-color: rgba(200, 111, 139, 0.24) !important;
+            background: linear-gradient(135deg, rgba(214, 230, 191, 0.92), rgba(167, 201, 122, 0.36)) !important;
+            border-color: rgba(127, 169, 86, 0.3) !important;
         }
 
         .flash-banner {
@@ -1698,15 +1739,15 @@ def apply_theme() -> None:
         }
 
         .flash-banner-success {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(235, 247, 235, 0.92));
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.96), rgba(230, 241, 213, 0.96));
         }
 
         .flash-banner-info {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(235, 240, 247, 0.92));
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.95), rgba(238, 246, 229, 0.95));
         }
 
         .flash-banner-warning {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(250, 238, 228, 0.94));
+            background: linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(233, 241, 214, 0.96));
         }
 
         .page-loader-overlay {
@@ -1717,7 +1758,7 @@ def apply_theme() -> None:
             align-items: center;
             justify-content: center;
             padding: 1rem;
-            background: rgba(255, 250, 244, 0.58);
+            background: rgba(245, 248, 239, 0.62);
             backdrop-filter: blur(6px);
         }
 
@@ -1731,17 +1772,17 @@ def apply_theme() -> None:
             padding: 1.25rem 1.4rem;
             border-radius: 28px;
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.95);
-            box-shadow: 0 24px 60px rgba(57, 38, 49, 0.18);
+            background: rgba(252, 255, 247, 0.96);
+            box-shadow: 0 24px 60px rgba(60, 92, 47, 0.18);
         }
 
         .page-loader-spinner {
             width: 60px;
             height: 60px;
             border-radius: 999px;
-            border: 5px solid rgba(200, 111, 139, 0.18);
-            border-top-color: var(--rose);
-            border-right-color: var(--gold);
+            border: 5px solid rgba(167, 201, 122, 0.2);
+            border-top-color: var(--pista-deep);
+            border-right-color: var(--forest);
             animation: matrika-spin 0.9s linear infinite;
         }
 
@@ -1767,8 +1808,8 @@ def apply_theme() -> None:
             align-items: center;
             gap: 0.35rem;
             border-radius: 999px;
-            background: rgba(200, 111, 139, 0.12);
-            color: var(--rose-strong);
+            background: rgba(167, 201, 122, 0.18);
+            color: var(--forest);
             font-size: 0.72rem;
             font-weight: 800;
             letter-spacing: 0.14em;
@@ -1779,20 +1820,37 @@ def apply_theme() -> None:
         .hero-card {
             position: relative;
             overflow: hidden;
-            padding: clamp(1.4rem, 3vw, 2.2rem);
+            padding: clamp(1.5rem, 3vw, 2.4rem);
+            background:
+                linear-gradient(145deg, rgba(251, 255, 245, 0.92), rgba(229, 239, 213, 0.8));
+        }
+
+        .hero-card::before {
+            content: "";
+            position: absolute;
+            right: -1.5rem;
+            bottom: -1rem;
+            width: min(38vw, 280px);
+            height: min(48vw, 340px);
+            BUDDHA_BG_LAYER
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            background-size: contain;
+            opacity: 0.11;
+            pointer-events: none;
         }
 
         .hero-card::after {
             content: "";
             position: absolute;
-            inset: auto -10% -28% auto;
-            width: 280px;
-            height: 280px;
+            inset: auto -12% -28% auto;
+            width: 320px;
+            height: 320px;
             border-radius: 50%;
             background: radial-gradient(
                 circle,
-                rgba(200, 111, 139, 0.24) 0%,
-                rgba(200, 111, 139, 0.08) 50%,
+                rgba(167, 201, 122, 0.28) 0%,
+                rgba(167, 201, 122, 0.08) 52%,
                 transparent 72%
             );
             pointer-events: none;
@@ -1807,8 +1865,8 @@ def apply_theme() -> None:
 
         .hero-copy {
             max-width: 62ch;
-            font-size: 1.02rem;
-            line-height: 1.7;
+            font-size: 1.04rem;
+            line-height: 1.72;
         }
 
         .hero-actions {
@@ -1829,9 +1887,9 @@ def apply_theme() -> None:
             display: inline-flex;
             align-items: center;
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.86);
-            border: 1px solid var(--line);
-            color: #53444d;
+            background: rgba(251, 255, 245, 0.88);
+            border: 1px solid rgba(76, 109, 63, 0.16);
+            color: var(--forest);
             font-weight: 700;
             font-size: 0.86rem;
             padding: 0.42rem 0.76rem;
@@ -1840,6 +1898,7 @@ def apply_theme() -> None:
         .page-intro {
             padding: 1.15rem 1.2rem 1.1rem;
             margin-bottom: 1rem;
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.9), rgba(230, 241, 214, 0.82));
         }
 
         .page-intro h1 {
@@ -1892,11 +1951,11 @@ def apply_theme() -> None:
             position: absolute;
             inset: 0 auto 0 0;
             width: 4px;
-            background: linear-gradient(180deg, var(--rose), var(--gold));
+            background: linear-gradient(180deg, var(--pista-deep), var(--forest));
         }
 
         .card-kicker {
-            color: var(--rose-strong);
+            color: var(--forest);
             text-transform: uppercase;
             letter-spacing: 0.14em;
             font-size: 0.72rem;
@@ -1931,8 +1990,8 @@ def apply_theme() -> None:
             display: inline-flex;
             align-items: center;
             border-radius: 999px;
-            background: rgba(143, 166, 143, 0.12);
-            color: #4f6252;
+            background: rgba(167, 201, 122, 0.18);
+            color: var(--forest);
             padding: 0.36rem 0.64rem;
             font-size: 0.78rem;
             font-weight: 700;
@@ -1940,6 +1999,7 @@ def apply_theme() -> None:
 
         .metric-card {
             padding: 1rem;
+            background: linear-gradient(180deg, rgba(251, 255, 245, 0.86), rgba(237, 245, 228, 0.82));
         }
 
         .metric-label {
@@ -1974,9 +2034,9 @@ def apply_theme() -> None:
             align-items: start;
             padding: 0.95rem 1rem;
             border-radius: 22px;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(251, 255, 245, 0.76);
             border: 1px solid var(--line);
-            box-shadow: 0 10px 24px rgba(63, 42, 51, 0.06);
+            box-shadow: 0 10px 24px rgba(76, 109, 63, 0.08);
         }
 
         .timeline-index {
@@ -1985,7 +2045,7 @@ def apply_theme() -> None:
             border-radius: 999px;
             display: grid;
             place-items: center;
-            background: linear-gradient(135deg, var(--rose), var(--gold));
+            background: linear-gradient(135deg, var(--pista), var(--forest));
             color: white;
             font-weight: 800;
             flex-shrink: 0;
@@ -2005,10 +2065,10 @@ def apply_theme() -> None:
 
         .callout {
             border-radius: 22px;
-            border: 1px solid rgba(200, 111, 139, 0.22);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(247, 235, 225, 0.8));
+            border: 1px solid rgba(127, 169, 86, 0.26);
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.9), rgba(236, 245, 227, 0.84));
             padding: 1rem 1.1rem;
-            box-shadow: 0 14px 28px rgba(63, 42, 51, 0.08);
+            box-shadow: 0 14px 28px rgba(76, 109, 63, 0.08);
         }
 
         .footer-shell {
@@ -2016,7 +2076,7 @@ def apply_theme() -> None:
             padding: 1rem 1.15rem;
             border-radius: 24px;
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(251, 255, 245, 0.84);
             box-shadow: var(--shadow);
         }
 
@@ -2029,26 +2089,53 @@ def apply_theme() -> None:
         .stButton > button {
             border-radius: 999px;
             border: 1px solid transparent;
-            background: linear-gradient(135deg, var(--rose), var(--gold));
+            background: linear-gradient(135deg, var(--pista), var(--forest));
             color: white;
             font-weight: 800;
             padding: 0.68rem 1rem;
-            box-shadow: 0 12px 24px rgba(200, 111, 139, 0.24);
-            transition: transform 0.18s ease, filter 0.18s ease;
+            box-shadow: 0 12px 24px rgba(127, 169, 86, 0.26);
+            transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
         }
 
         .stButton > button:hover {
             transform: translateY(-1px);
             filter: brightness(0.98);
+            box-shadow: 0 14px 28px rgba(76, 109, 63, 0.24);
         }
 
         [data-testid="stLinkButton"] a {
             border-radius: 999px !important;
-            border: 1px solid var(--line) !important;
-            background: rgba(255, 255, 255, 0.82) !important;
+            border: 1px solid rgba(76, 109, 63, 0.16) !important;
+            background: rgba(251, 255, 245, 0.86) !important;
             color: var(--ink) !important;
             font-weight: 800 !important;
-            box-shadow: 0 10px 20px rgba(63, 42, 51, 0.08) !important;
+            box-shadow: 0 10px 20px rgba(76, 109, 63, 0.08) !important;
+        }
+
+        div[data-baseweb="input"] > div,
+        div[data-baseweb="textarea"] > div,
+        div[data-baseweb="select"] > div,
+        [data-testid="stNumberInput"] input,
+        [data-testid="stTextInput"] input {
+            border-radius: 18px !important;
+            border: 1px solid rgba(76, 109, 63, 0.18) !important;
+            background: rgba(251, 255, 245, 0.94) !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            color: var(--ink) !important;
+        }
+
+        textarea,
+        input {
+            color: var(--ink) !important;
+        }
+
+        label,
+        .stSelectbox label,
+        .stTextInput label,
+        .stTextArea label,
+        .stNumberInput label {
+            color: var(--forest) !important;
+            font-weight: 700 !important;
         }
 
         div[data-testid="stSpinner"],
@@ -2059,7 +2146,7 @@ def apply_theme() -> None:
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 250, 244, 0.48);
+            background: rgba(245, 248, 239, 0.5);
             backdrop-filter: blur(4px);
         }
 
@@ -2067,18 +2154,24 @@ def apply_theme() -> None:
         .stSpinner > div {
             padding: 1rem 1.15rem;
             border-radius: 22px;
-            background: rgba(255, 255, 255, 0.92);
+            background: rgba(251, 255, 245, 0.94);
             border: 1px solid var(--line);
             box-shadow: var(--shadow);
         }
 
         hr {
-            border-color: rgba(96, 72, 84, 0.12);
+            border-color: rgba(76, 109, 63, 0.12);
         }
 
         @media (max-width: 980px) {
             .hero-title {
                 max-width: none;
+            }
+
+            .stApp::before {
+                width: min(48vw, 300px);
+                height: min(70vw, 380px);
+                opacity: 0.11;
             }
         }
 
@@ -2107,11 +2200,30 @@ def apply_theme() -> None:
             .section-heading h2 {
                 font-size: clamp(1.8rem, 9vw, 2.6rem);
             }
+
+            .hero-card::before {
+                width: min(46vw, 210px);
+                height: min(60vw, 260px);
+                right: -1.25rem;
+                bottom: -0.75rem;
+                opacity: 0.09;
+            }
+
+            .stApp::before {
+                right: -1rem;
+                bottom: 4rem;
+                width: min(64vw, 280px);
+                height: min(80vw, 340px);
+                opacity: 0.09;
+            }
         }
         </style>
-        """,
-        unsafe_allow_html=True,
-    )
+        """
+    if buddha_background:
+        css = css.replace("BUDDHA_BG_LAYER", f'background-image: url("{buddha_background}");')
+    else:
+        css = css.replace("BUDDHA_BG_LAYER", "background-image: none;")
+    st.markdown(css, unsafe_allow_html=True)
 
 
 def render_card(
@@ -2467,10 +2579,10 @@ def dashboard_page() -> None:
             """
             <div class="hero-card">
                 <span class="eyebrow">Matrika Academy</span>
-                <h1 class="hero-title">A calm app for learning, practice, and growth.</h1>
+                <h1 class="hero-title">A calm yoga space for learning, breath, and growth.</h1>
                 <p class="hero-copy">
-                    Keep classes, admissions, replays, fees, and mentorship in one place for
-                    mothers, children, and future teachers.
+                    Keep yoga classes, guided practice, admissions, replays, and mentorship in one
+                    serene place for mothers, children, and future teachers.
                 </p>
                 <div class="pill-row">
                     <span class="pill">Small cohorts</span>
