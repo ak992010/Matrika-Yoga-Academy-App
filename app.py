@@ -1505,7 +1505,7 @@ def apply_theme() -> None:
             background-position: center bottom;
             background-repeat: no-repeat;
             background-size: contain;
-            opacity: 0.16;
+            opacity: 0.2;
             pointer-events: none;
             z-index: 0;
             filter: drop-shadow(0 20px 34px rgba(76, 109, 63, 0.12));
@@ -1836,7 +1836,7 @@ def apply_theme() -> None:
             background-position: center bottom;
             background-repeat: no-repeat;
             background-size: contain;
-            opacity: 0.11;
+            opacity: 0.16;
             pointer-events: none;
         }
 
@@ -1915,6 +1915,30 @@ def apply_theme() -> None:
 
         .section-heading {
             margin: 2rem 0 1rem;
+        }
+
+        .section-heading-top {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.55rem 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .section-icons {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--forest);
+            font-size: 0.92rem;
+            letter-spacing: 0.04em;
+            opacity: 0.8;
+        }
+
+        .kicker-symbol {
+            display: inline-flex;
+            margin-right: 0.28rem;
+            opacity: 0.85;
         }
 
         .section-heading h2 {
@@ -2071,6 +2095,43 @@ def apply_theme() -> None:
             box-shadow: 0 14px 28px rgba(76, 109, 63, 0.08);
         }
 
+        .form-banner {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.9rem;
+            align-items: start;
+            padding: 1rem 1.05rem;
+            margin-bottom: 0.85rem;
+            border-radius: 22px;
+            border: 1px solid rgba(127, 169, 86, 0.22);
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.92), rgba(234, 243, 220, 0.86));
+            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.08);
+        }
+
+        .form-badge {
+            width: 2.55rem;
+            height: 2.55rem;
+            display: grid;
+            place-items: center;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--pista), var(--forest));
+            color: white;
+            font-size: 1.05rem;
+            box-shadow: 0 10px 20px rgba(76, 109, 63, 0.16);
+        }
+
+        .form-banner h3 {
+            margin: 0;
+            font-size: 1.35rem;
+            line-height: 1;
+        }
+
+        .form-banner p {
+            margin: 0.28rem 0 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
         .footer-shell {
             margin-top: 2rem;
             padding: 1rem 1.15rem;
@@ -2136,6 +2197,43 @@ def apply_theme() -> None:
         .stNumberInput label {
             color: var(--forest) !important;
             font-weight: 700 !important;
+        }
+
+        div[data-testid="stForm"] {
+            position: relative;
+            overflow: hidden;
+            padding: 1.05rem 1rem 0.35rem;
+            border-radius: 28px;
+            border: 1px solid rgba(127, 169, 86, 0.24);
+            background: linear-gradient(145deg, rgba(251, 255, 245, 0.95), rgba(234, 243, 220, 0.8));
+            box-shadow: 0 18px 36px rgba(76, 109, 63, 0.1);
+            margin-bottom: 0.4rem;
+        }
+
+        div[data-testid="stForm"]::before {
+            content: "";
+            position: absolute;
+            right: -1rem;
+            bottom: -1rem;
+            width: 180px;
+            height: 220px;
+            BUDDHA_BG_LAYER
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            background-size: contain;
+            opacity: 0.08;
+            pointer-events: none;
+        }
+
+        div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button,
+        div[data-testid="stForm"] .stButton > button {
+            margin-top: 0.4rem;
+        }
+
+        div[data-testid="stForm"] .stCaptionContainer,
+        div[data-testid="stForm"] .stMarkdown {
+            position: relative;
+            z-index: 1;
         }
 
         div[data-testid="stSpinner"],
@@ -2206,7 +2304,7 @@ def apply_theme() -> None:
                 height: min(60vw, 260px);
                 right: -1.25rem;
                 bottom: -0.75rem;
-                opacity: 0.09;
+                opacity: 0.12;
             }
 
             .stApp::before {
@@ -2214,7 +2312,7 @@ def apply_theme() -> None:
                 bottom: 4rem;
                 width: min(64vw, 280px);
                 height: min(80vw, 340px);
-                opacity: 0.09;
+                opacity: 0.12;
             }
         }
         </style>
@@ -2234,7 +2332,11 @@ def render_card(
     meta: list[str] | tuple[str, ...] | None = None,
     class_name: str = "feature-card",
 ) -> None:
-    kicker_html = f"<div class='card-kicker'>{esc(kicker)}</div>" if kicker else ""
+    kicker_html = (
+        f"<div class='card-kicker'><span class='kicker-symbol' aria-hidden='true'>&#10047;</span>{esc(kicker)}</div>"
+        if kicker
+        else ""
+    )
     meta_html = f"<div class='meta-row'>{chips(list(meta or []))}</div>" if meta else ""
     st.markdown(
         f"""
@@ -2307,9 +2409,31 @@ def render_section(eyebrow: str, title: str, body: str) -> None:
     st.markdown(
         f"""
         <div class="section-heading">
-            <span class="eyebrow">{esc(eyebrow)}</span>
+            <div class="section-heading-top">
+                <span class="eyebrow">{esc(eyebrow)}</span>
+                <div class="section-icons" aria-hidden="true">
+                    <span>&#10047;</span>
+                    <span>&#2384;</span>
+                    <span>&#10047;</span>
+                </div>
+            </div>
             <h2>{esc(title)}</h2>
             <p>{esc(body)}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_form_banner(symbol: str, title: str, body: str) -> None:
+    st.markdown(
+        f"""
+        <div class="form-banner">
+            <div class="form-badge" aria-hidden="true">{symbol}</div>
+            <div>
+                <h3>{esc(title)}</h3>
+                <p>{esc(body)}</p>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -2775,6 +2899,11 @@ def account_page() -> None:
             meta=["One-time setup", "Email-based access", "Protected forms"],
             class_name="timeline-card",
         )
+        render_form_banner(
+            "&#2384;",
+            "Begin with a calm account setup",
+            "This short sign-up keeps your yoga journey, saved forms, and academy replies connected to one learner profile.",
+        )
         with st.form("create_account_form"):
             full_name = st.text_input("Full name")
             email = st.text_input("Email")
@@ -2843,6 +2972,11 @@ def account_page() -> None:
             kicker="Login",
             meta=["Protected access", "Saved details", "Automatic replies"],
             class_name="timeline-card",
+        )
+        render_form_banner(
+            "&#10047;",
+            "Return to your practice calmly",
+            "Log in with the same academy email so your protected forms, check-ins, and replies stay in one place.",
         )
         with st.form("login_account_form"):
             email = st.text_input("Account email")
@@ -2976,6 +3110,11 @@ def admissions_page() -> None:
     with right:
         st.caption(
             f"Signed in as {learner.get('email')}. Admissions requests and automatic replies will use this learner account."
+        )
+        render_form_banner(
+            "&#10047;",
+            "Share your seat request mindfully",
+            "A few clear details help the academy suggest the right track, timing, and support path without back-and-forth.",
         )
         with st.form("booking_form"):
             full_name = st.text_input("Full name", value=learner.get("full_name", ""))
@@ -3160,6 +3299,11 @@ def live_studio_page() -> None:
         st.caption(
             f"Signed in as {learner.get('email')}. Attendance and replay support will be tied to this learner account."
         )
+        render_form_banner(
+            "&#10048;",
+            "Mark your class presence gently",
+            "Saving attendance helps the academy connect your live session, replay support, and follow-up guidance to the right learner profile.",
+        )
         with st.form("attendance_form"):
             attendee_name = st.text_input("Name", value=learner.get("full_name", ""))
             attendee_email = st.text_input("Email", value=learner.get("email", ""), disabled=True)
@@ -3253,6 +3397,11 @@ def certification_page() -> None:
         st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
         st.caption(
             f"Signed in as {learner.get('email')}. Certification applications and automatic replies will use this learner account."
+        )
+        render_form_banner(
+            "&#2384;",
+            "Apply with intention",
+            "Share your current practice level and teaching goals so the mentor team can guide your certification journey thoughtfully.",
         )
         with st.form("training_form"):
             full_name = st.text_input("Full name", value=learner.get("full_name", ""))
@@ -3360,6 +3509,11 @@ def kids_page() -> None:
     st.caption(
         f"Signed in as {learner.get('email')}. Kids enquiries and automatic replies will use this learner account."
     )
+    render_form_banner(
+        "&#10047;",
+        "Plan a joyful kids practice",
+        "Use this enquiry to share your child details and the best time window for your family so the academy can suggest the right batch.",
+    )
     with st.form("kids_form"):
         parent = st.text_input("Parent / Guardian name", value=learner.get("full_name", ""))
         child = st.text_input("Child name")
@@ -3465,6 +3619,11 @@ def payments_page() -> None:
     st.caption(
         f"Signed in as {learner.get('email')}. Payment confirmations and automatic replies will use this learner account."
     )
+    render_form_banner(
+        "&#10050;",
+        "Complete the payment step with clarity",
+        "The academy only needs your chosen plan, amount, and transaction reference to verify your seat quickly and reply with the next step.",
+    )
     with st.form("payment_form"):
         full_name = st.text_input("Name", value=learner.get("full_name", ""))
         email = st.text_input("Email", value=learner.get("email", ""), disabled=True)
@@ -3568,6 +3727,11 @@ def contact_page() -> None:
         st.caption(
             f"Signed in as {learner.get('email')}. Contact messages and automatic replies will use this learner account."
         )
+        render_form_banner(
+            "&#10047;",
+            "Send one clear message",
+            "Your support note stays connected to the same learner account the academy already sees in admissions, attendance, and payments.",
+        )
         with st.form("contact_form"):
             full_name = st.text_input("Name", value=learner.get("full_name", ""))
             email = st.text_input("Email", value=learner.get("email", ""), disabled=True)
@@ -3644,6 +3808,11 @@ def admin_page() -> None:
             st.warning(
                 f"The admin page is not fully protected yet. Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets or host env vars."
             )
+        render_form_banner(
+            "&#10047;",
+            "Open the academy control room",
+            "Admin access stays separate from the public learner journey so academy data remains protected and easy to review.",
+        )
         with st.form("admin_login_form"):
             password = st.text_input("Admin password", type="password")
             submit = st.form_submit_button("Unlock admin")
