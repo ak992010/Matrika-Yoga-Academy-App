@@ -138,6 +138,8 @@ SUBMISSION_SCHEMAS = {
             "plan",
             "amount",
             "method",
+            "provider",
+            "payer_handle",
             "reference",
             "notes",
         ],
@@ -165,6 +167,10 @@ SUBMISSION_SCHEMAS = {
             "full_name",
             "email",
             "phone",
+            "linked_payment_app",
+            "linked_payment_handle",
+            "linked_payment_notes",
+            "linked_payment_updated_at",
             "password_hash",
             "password_salt",
             "status",
@@ -209,6 +215,15 @@ TIME_PERIOD_OPTIONS = [
     "Evening",
     "Weekend",
     "Flexible",
+]
+
+PAYMENT_APP_OPTIONS = [
+    "Google Pay",
+    "PhonePe",
+    "Paytm",
+    "BHIM",
+    "Amazon Pay",
+    "Other UPI app",
 ]
 
 HOME_STATS = [
@@ -327,6 +342,27 @@ OUTCOME_CARDS = [
         "title": "A stronger certification journey",
         "body": "Future teachers can move from interest to application with a clearer view of practice, mentorship, and timing.",
         "meta": ["Mentoring", "Cohort-ready"],
+    },
+]
+
+VISITOR_WELCOME_CARDS = [
+    {
+        "kicker": "Step 1",
+        "title": "Explore the academy calmly",
+        "body": "See the main yoga paths, class rhythm, and support style before you commit to anything.",
+        "meta": ["No pressure", "Clear layout"],
+    },
+    {
+        "kicker": "Step 2",
+        "title": "Create one learner account",
+        "body": "Your admissions, payments, attendance, and messages stay connected to the same person and email.",
+        "meta": ["Protected access", "Saved profile"],
+    },
+    {
+        "kicker": "Step 3",
+        "title": "Move into a guided flow",
+        "body": "Book a trial, join live, or submit payment proof with a calmer, more premium experience.",
+        "meta": ["One flow", "Follow-up ready"],
     },
 ]
 
@@ -540,6 +576,86 @@ CONTACT_CARDS = [
     },
 ]
 
+PAGE_SPIRIT_PANELS = {
+    "Dashboard": {
+        "eyebrow": "Landing energy",
+        "title": "Step into a quieter yoga rhythm.",
+        "body": "The public academy experience is now built to feel softer, greener, and easier to trust on a first visit.",
+        "symbol": "✿",
+        "mantra": "Arrive · breathe · continue",
+    },
+    "Account": {
+        "eyebrow": "Sacred access",
+        "title": "One calm identity for your entire journey.",
+        "body": "Your learner account now anchors admissions, attendance, payments, and support inside one protected flow.",
+        "symbol": "ॐ",
+        "mantra": "Sign in · settle · move forward",
+    },
+    "Programs": {
+        "eyebrow": "Paths",
+        "title": "Different journeys, one grounded philosophy.",
+        "body": "Each program is shaped around breath, rhythm, and stage-aware support rather than pressure or overload.",
+        "symbol": "☼",
+        "mantra": "Practice · support · growth",
+    },
+    "Schedule": {
+        "eyebrow": "Rhythm",
+        "title": "A timetable that feels like breath, not noise.",
+        "body": "Morning, evening, and specialty sessions now sit inside a calmer visual rhythm for easier planning.",
+        "symbol": "☾",
+        "mantra": "Morning · evening · weekend",
+    },
+    "Admissions": {
+        "eyebrow": "Welcome",
+        "title": "Begin your admission with clarity and ease.",
+        "body": "The academy team now receives a more complete view of each learner without asking for long back-and-forth details.",
+        "symbol": "❋",
+        "mantra": "Share · match · begin",
+    },
+    "Live Studio": {
+        "eyebrow": "Practice",
+        "title": "Live practice now feels more ceremonial and focused.",
+        "body": "Attendance, replay support, and live links are framed as one joined class experience instead of separate chores.",
+        "symbol": "✺",
+        "mantra": "Join · practice · reflect",
+    },
+    "Certification": {
+        "eyebrow": "Teacher path",
+        "title": "A mentored path with steadier spiritual tone.",
+        "body": "The certification flow now carries more of the academy’s yoga identity from first interest to final practicum.",
+        "symbol": "✶",
+        "mantra": "Learn · teach · deepen",
+    },
+    "Kids Studio": {
+        "eyebrow": "Joyful movement",
+        "title": "Playful yoga can still feel beautifully guided.",
+        "body": "The kids section now balances warmth, focus, and parent clarity with a more intentional visual language.",
+        "symbol": "✸",
+        "mantra": "Play · breathe · rest",
+    },
+    "Payments": {
+        "eyebrow": "Exchange",
+        "title": "Payments now sit inside the same calm learner journey.",
+        "body": "Families can link a preferred third-party payment app and carry that context straight into proof submission.",
+        "symbol": "✺",
+        "mantra": "Choose · pay · confirm",
+    },
+    "Contact": {
+        "eyebrow": "Reach out",
+        "title": "Support should feel held, not lost.",
+        "body": "Messages, timing preferences, and replies now sit inside a softer communication experience built for trust.",
+        "symbol": "♡",
+        "mantra": "Ask · receive · continue",
+    },
+    "Admin": {
+        "eyebrow": "Stewardship",
+        "title": "The academy control room stays calm too.",
+        "body": "Even the admin layer now carries the same grounded visual language while keeping team access protected.",
+        "symbol": "✿",
+        "mantra": "Review · respond · protect",
+    },
+}
+
 st.set_page_config(
     page_title="Matrika Academy",
     page_icon="🪷",
@@ -573,6 +689,10 @@ def normalize_phone(value: str) -> str:
     if digits.startswith("91") and len(digits) == 12:
         return f"+{digits}"
     return digits
+
+
+def normalize_payment_handle(value: str) -> str:
+    return normalize_text(value)
 
 
 def valid_email(value: str) -> bool:
@@ -616,6 +736,12 @@ def build_whatsapp_url(message: str) -> str:
 
 def build_mailto_url(subject: str, body: str) -> str:
     return f"mailto:{CONTACT_EMAIL}?subject={quote(subject)}&body={quote(body)}"
+
+
+def payment_app_link(app_name: str, learner: Mapping[str, object] | None = None) -> str:
+    learner = learner or {}
+    note = normalize_text(str(learner.get("full_name", "")) or "Matrika learner")
+    return f"{PAYMENT_UPI_URL}&tn={quote(f'{app_name} payment for {note}')}"
 
 
 def render_support_actions(subject: str, message: str, *, include_call: bool = True) -> None:
@@ -1216,6 +1342,9 @@ def current_learner_profile() -> dict[str, str]:
         "full_name": str(st.session_state.get("learner_name", "")).strip(),
         "email": str(st.session_state.get("learner_email", "")).strip(),
         "phone": str(st.session_state.get("learner_phone", "")).strip(),
+        "linked_payment_app": str(st.session_state.get("learner_payment_app", "")).strip(),
+        "linked_payment_handle": str(st.session_state.get("learner_payment_handle", "")).strip(),
+        "linked_payment_notes": str(st.session_state.get("learner_payment_notes", "")).strip(),
     }
 
 
@@ -1224,6 +1353,9 @@ def sync_learner_session(account: Mapping[str, object]) -> None:
     st.session_state.learner_name = str(account.get("full_name", "")).strip()
     st.session_state.learner_email = normalize_email(str(account.get("email", "")))
     st.session_state.learner_phone = normalize_phone(str(account.get("phone", "")))
+    st.session_state.learner_payment_app = str(account.get("linked_payment_app", "")).strip()
+    st.session_state.learner_payment_handle = normalize_payment_handle(str(account.get("linked_payment_handle", "")))
+    st.session_state.learner_payment_notes = str(account.get("linked_payment_notes", "")).strip()
 
 
 def logout_learner() -> None:
@@ -1231,6 +1363,9 @@ def logout_learner() -> None:
     st.session_state.learner_name = ""
     st.session_state.learner_email = ""
     st.session_state.learner_phone = ""
+    st.session_state.learner_payment_app = ""
+    st.session_state.learner_payment_handle = ""
+    st.session_state.learner_payment_notes = ""
 
 
 def remember_recent_account_creation(email: str) -> None:
@@ -1269,6 +1404,10 @@ def create_user_account(full_name: str, email: str, phone: str, password: str) -
         "full_name": normalize_text(full_name),
         "email": normalize_email(email),
         "phone": normalize_phone(phone),
+        "linked_payment_app": "",
+        "linked_payment_handle": "",
+        "linked_payment_notes": "",
+        "linked_payment_updated_at": "",
         "password_hash": hashed_password,
         "password_salt": salt,
         "status": "active",
@@ -1293,6 +1432,31 @@ def record_user_login(email: str) -> dict[str, str] | None:
         return None
     replace_rows(USER_ACCOUNTS_CSV, current_accounts)
     return updated_row
+
+
+def update_user_account(email: str, updates: Mapping[str, object]) -> dict[str, str] | None:
+    current_accounts = load_user_accounts()
+    target = normalize_email(email)
+    updated_row = None
+    for row in current_accounts:
+        if normalize_email(row.get("email", "")) == target:
+            for key, value in updates.items():
+                row[str(key)] = str(value)
+            row["updated_at"] = current_timestamp()
+            updated_row = {str(key): str(value) for key, value in row.items()}
+            break
+    if updated_row is None:
+        return None
+    replace_rows(USER_ACCOUNTS_CSV, current_accounts)
+    return updated_row
+
+
+def preferred_payment_app(learner: Mapping[str, object]) -> str:
+    return str(learner.get("linked_payment_app", "")).strip()
+
+
+def preferred_payment_handle(learner: Mapping[str, object]) -> str:
+    return normalize_payment_handle(str(learner.get("linked_payment_handle", "")))
 
 
 def authenticate_user_account(email: str, password: str) -> dict[str, str] | None:
@@ -1643,6 +1807,7 @@ def apply_theme() -> None:
             background: linear-gradient(135deg, rgba(251, 255, 245, 0.9), rgba(232, 241, 217, 0.86));
             box-shadow: var(--shadow);
             backdrop-filter: blur(12px);
+            animation: matrika-fade-up 0.55s ease both;
         }
 
         .topbar-brand {
@@ -1720,6 +1885,7 @@ def apply_theme() -> None:
             border-radius: 24px;
             border: 1px solid var(--line);
             box-shadow: var(--shadow);
+            animation: matrika-fade-up 0.5s ease both;
         }
 
         .flash-banner h3 {
@@ -1823,6 +1989,7 @@ def apply_theme() -> None:
             padding: clamp(1.5rem, 3vw, 2.4rem);
             background:
                 linear-gradient(145deg, rgba(251, 255, 245, 0.92), rgba(229, 239, 213, 0.8));
+            animation: matrika-fade-up 0.65s ease both;
         }
 
         .hero-card::before {
@@ -1963,6 +2130,20 @@ def apply_theme() -> None:
             position: relative;
             overflow: hidden;
             padding: 1rem 1rem 1.05rem;
+            animation: matrika-fade-up 0.62s ease both;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+        }
+
+        .feature-card:hover,
+        .info-card:hover,
+        .schedule-card:hover,
+        .pricing-card:hover,
+        .timeline-card:hover,
+        .contact-card:hover,
+        .metric-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 22px 42px rgba(76, 109, 63, 0.16);
+            border-color: rgba(127, 169, 86, 0.28);
         }
 
         .feature-card::before,
@@ -2024,6 +2205,8 @@ def apply_theme() -> None:
         .metric-card {
             padding: 1rem;
             background: linear-gradient(180deg, rgba(251, 255, 245, 0.86), rgba(237, 245, 228, 0.82));
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+            animation: matrika-fade-up 0.72s ease both;
         }
 
         .metric-label {
@@ -2095,6 +2278,119 @@ def apply_theme() -> None:
             box-shadow: 0 14px 28px rgba(76, 109, 63, 0.08);
         }
 
+        .illustration-panel {
+            position: relative;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+            gap: 1rem;
+            align-items: center;
+            padding: 1.2rem 1.2rem 1.1rem;
+            margin: 1rem 0 1.2rem;
+            border-radius: 28px;
+            border: 1px solid rgba(127, 169, 86, 0.24);
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.94), rgba(232, 241, 217, 0.78));
+            box-shadow: 0 18px 38px rgba(76, 109, 63, 0.1);
+            animation: matrika-fade-up 0.58s ease both;
+        }
+
+        .illustration-panel::after {
+            content: "";
+            position: absolute;
+            inset: auto -8% -30% auto;
+            width: 240px;
+            height: 240px;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(167, 201, 122, 0.24), rgba(167, 201, 122, 0) 70%);
+            pointer-events: none;
+        }
+
+        .illustration-copy {
+            position: relative;
+            z-index: 1;
+        }
+
+        .illustration-copy h3 {
+            margin: 0.52rem 0 0.3rem;
+            font-size: clamp(1.85rem, 4vw, 2.7rem);
+            line-height: 0.96;
+        }
+
+        .illustration-copy p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.68;
+            max-width: 60ch;
+        }
+
+        .illustration-art {
+            position: relative;
+            min-height: 220px;
+            display: grid;
+            place-items: center;
+        }
+
+        .illustration-orbit {
+            position: absolute;
+            inset: 18% 14%;
+            border-radius: 999px;
+            border: 1px solid rgba(127, 169, 86, 0.22);
+            animation: matrika-float 7s ease-in-out infinite;
+        }
+
+        .illustration-orbit::before,
+        .illustration-orbit::after {
+            content: "";
+            position: absolute;
+            inset: 12%;
+            border-radius: 999px;
+            border: 1px dashed rgba(127, 169, 86, 0.18);
+        }
+
+        .illustration-orbit::after {
+            inset: 24%;
+        }
+
+        .illustration-symbol {
+            position: relative;
+            z-index: 1;
+            width: 7.5rem;
+            height: 7.5rem;
+            display: grid;
+            place-items: center;
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(167, 201, 122, 0.94), rgba(76, 109, 63, 0.94));
+            color: white;
+            font-size: 3rem;
+            box-shadow: 0 16px 34px rgba(76, 109, 63, 0.18);
+        }
+
+        .illustration-symbol::before {
+            content: "";
+            position: absolute;
+            inset: -1.15rem;
+            border-radius: 999px;
+            border: 1px solid rgba(127, 169, 86, 0.22);
+        }
+
+        .illustration-mantra {
+            position: absolute;
+            bottom: 0.1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.42rem 0.78rem;
+            border-radius: 999px;
+            background: rgba(251, 255, 245, 0.9);
+            border: 1px solid rgba(127, 169, 86, 0.2);
+            color: var(--forest);
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            white-space: nowrap;
+            z-index: 1;
+        }
+
         .form-banner {
             display: grid;
             grid-template-columns: auto 1fr;
@@ -2106,6 +2402,7 @@ def apply_theme() -> None:
             border: 1px solid rgba(127, 169, 86, 0.22);
             background: linear-gradient(135deg, rgba(251, 255, 245, 0.92), rgba(234, 243, 220, 0.86));
             box-shadow: 0 12px 26px rgba(76, 109, 63, 0.08);
+            animation: matrika-fade-up 0.5s ease both;
         }
 
         .form-badge {
@@ -2208,6 +2505,7 @@ def apply_theme() -> None:
             background: linear-gradient(145deg, rgba(251, 255, 245, 0.95), rgba(234, 243, 220, 0.8));
             box-shadow: 0 18px 36px rgba(76, 109, 63, 0.1);
             margin-bottom: 0.4rem;
+            animation: matrika-fade-up 0.62s ease both;
         }
 
         div[data-testid="stForm"]::before {
@@ -2261,6 +2559,22 @@ def apply_theme() -> None:
             border-color: rgba(76, 109, 63, 0.12);
         }
 
+        @keyframes matrika-fade-up {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes matrika-float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
         @media (max-width: 980px) {
             .hero-title {
                 max-width: none;
@@ -2270,6 +2584,14 @@ def apply_theme() -> None:
                 width: min(48vw, 300px);
                 height: min(70vw, 380px);
                 opacity: 0.11;
+            }
+
+            .illustration-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .illustration-art {
+                min-height: 180px;
             }
         }
 
@@ -2297,6 +2619,18 @@ def apply_theme() -> None:
             .page-intro h1,
             .section-heading h2 {
                 font-size: clamp(1.8rem, 9vw, 2.6rem);
+            }
+
+            .illustration-symbol {
+                width: 6rem;
+                height: 6rem;
+                font-size: 2.45rem;
+            }
+
+            .illustration-mantra {
+                position: static;
+                transform: none;
+                margin-top: 0.85rem;
             }
 
             .hero-card::before {
@@ -2433,6 +2767,30 @@ def render_form_banner(symbol: str, title: str, body: str) -> None:
             <div>
                 <h3>{esc(title)}</h3>
                 <p>{esc(body)}</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_illustration_panel(page_name: str) -> None:
+    panel = PAGE_SPIRIT_PANELS.get(page_name)
+    if not panel:
+        return
+
+    st.markdown(
+        f"""
+        <div class="illustration-panel">
+            <div class="illustration-copy">
+                <span class="eyebrow">{esc(panel["eyebrow"])}</span>
+                <h3>{esc(panel["title"])}</h3>
+                <p>{esc(panel["body"])}</p>
+            </div>
+            <div class="illustration-art" aria-hidden="true">
+                <div class="illustration-orbit"></div>
+                <div class="illustration-symbol">{panel["symbol"]}</div>
+                <div class="illustration-mantra">{esc(panel["mantra"])}</div>
             </div>
         </div>
         """,
@@ -2763,8 +3121,43 @@ def dashboard_page() -> None:
             class_name="info-card",
         )
 
+    render_illustration_panel("Dashboard")
+
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
     render_metric_grid(HOME_STATS)
+
+    if not learner_authenticated():
+        render_section(
+            "First visit",
+            "A more premium landing path for new visitors.",
+            "If you are discovering Matrika Academy for the first time, this flow helps you understand the journey before you create an account or request a class.",
+        )
+        render_card_grid(VISITOR_WELCOME_CARDS, columns=3, class_name="timeline-card")
+        visitor_actions = st.columns(3)
+        with visitor_actions[0]:
+            st.button(
+                "Start with account",
+                key="visitor_account_cta",
+                use_container_width=True,
+                on_click=jump_to,
+                args=("Account",),
+            )
+        with visitor_actions[1]:
+            st.button(
+                "Explore programs",
+                key="visitor_programs_cta",
+                use_container_width=True,
+                on_click=jump_to,
+                args=("Programs",),
+            )
+        with visitor_actions[2]:
+            st.link_button(
+                "Message the academy",
+                build_whatsapp_url(
+                    "Hi Matrika Academy, I am a new visitor and want help choosing the right yoga path."
+                ),
+                use_container_width=True,
+            )
 
     render_section(
         "Public launch",
@@ -2845,6 +3238,7 @@ def account_page() -> None:
         "Create your account once, then log in whenever you want to use the academy tools.",
         "Protected sections now use learner accounts so submissions, automatic replies, and follow-up stay tied to the right person.",
     )
+    render_illustration_panel("Account")
 
     if learner_authenticated():
         learner = current_learner_profile()
@@ -2887,6 +3281,87 @@ def account_page() -> None:
         st.info(
             "Your learner account keeps admissions, attendance, payments, and support messages tied to one email so the academy can reply automatically and follow up faster."
         )
+        st.divider()
+        render_section(
+            "Linked payment apps",
+            "Save the payment app you usually use so the academy can verify proofs faster.",
+            "This does not charge anything automatically. It simply keeps your preferred third-party payment app and handle connected to your learner account.",
+        )
+        payment_cols = st.columns([0.95, 1.05])
+        with payment_cols[0]:
+            if preferred_payment_app(learner):
+                render_card(
+                    preferred_payment_app(learner),
+                    preferred_payment_handle(learner) or "No handle saved yet.",
+                    kicker="Linked payment profile",
+                    meta=[
+                        "Reusable in payments",
+                        "Third-party app",
+                        learner.get("linked_payment_notes") or "No extra note",
+                    ],
+                    class_name="info-card",
+                )
+            else:
+                render_card(
+                    "No payment app linked yet",
+                    "Link your usual app if you want payment forms to remember the provider you use most often.",
+                    kicker="Linked payment profile",
+                    meta=["Google Pay", "PhonePe", "Paytm"],
+                    class_name="info-card",
+                )
+            payment_button_cols = st.columns(2)
+            with payment_button_cols[0]:
+                st.button(
+                    "Open payments",
+                    key="account_to_payments",
+                    use_container_width=True,
+                    on_click=jump_to,
+                    args=("Payments",),
+                )
+            with payment_button_cols[1]:
+                st.link_button(
+                    "Open UPI now",
+                    payment_app_link(preferred_payment_app(learner) or "UPI", learner),
+                    use_container_width=True,
+                )
+        with payment_cols[1]:
+            render_form_banner(
+                "&#10050;",
+                "Link a preferred payment app",
+                "Connect the provider name and your payer handle or UPI ID so future payment submissions feel faster and more consistent.",
+            )
+            current_app = preferred_payment_app(learner)
+            app_index = PAYMENT_APP_OPTIONS.index(current_app) if current_app in PAYMENT_APP_OPTIONS else 0
+            with st.form("payment_link_form"):
+                linked_app = st.selectbox("Payment app", PAYMENT_APP_OPTIONS, index=app_index)
+                linked_handle = st.text_input(
+                    "UPI ID / wallet number",
+                    value=preferred_payment_handle(learner),
+                )
+                linked_note = st.text_area(
+                    "Note for the academy (optional)",
+                    value=str(learner.get("linked_payment_notes", "")),
+                )
+                submit = st.form_submit_button("Save payment app")
+
+                if submit:
+                    clean_handle = normalize_payment_handle(linked_handle)
+                    clean_note = normalize_text(linked_note)
+                    if not clean_handle:
+                        st.error("Add your UPI ID, wallet number, or payer handle.")
+                    else:
+                        updated_account = update_user_account(
+                            learner.get("email", ""),
+                            {
+                                "linked_payment_app": linked_app,
+                                "linked_payment_handle": clean_handle,
+                                "linked_payment_notes": clean_note,
+                                "linked_payment_updated_at": current_timestamp(),
+                            },
+                        )
+                        if updated_account:
+                            sync_learner_session(updated_account)
+                        st.success("Your preferred payment app is linked to this learner account.")
         return
 
     create_col, login_col = st.columns(2)
@@ -3008,6 +3483,7 @@ def programs_page() -> None:
         "Structured journeys for every stage of learning.",
         "From pregnancy support to playful children's classes and mentoring for future teachers, the app keeps every path clear.",
     )
+    render_illustration_panel("Programs")
     render_card_grid(PROGRAM_CARDS, columns=3)
 
     st.divider()
@@ -3052,6 +3528,7 @@ def schedule_page() -> None:
         "A rhythm that feels steady instead of crowded.",
         "All timings are in IST and the schedule is designed for live participation with replay access.",
     )
+    render_illustration_panel("Schedule")
     render_card_grid(SCHEDULE_HIGHLIGHTS, columns=3, class_name="schedule-card")
     st.divider()
 
@@ -3083,6 +3560,7 @@ def admissions_page() -> None:
         "Book a trial, ask a question, or request a custom batch.",
         "Use this form to start the onboarding flow. The team will confirm by email or phone.",
     )
+    render_illustration_panel("Admissions")
     if not require_learner_account(
         "Admissions",
         "Create or log into your learner account before you request admissions so the academy can keep your batch details and automatic replies tied to one account.",
@@ -3217,6 +3695,7 @@ def live_studio_page() -> None:
         "Join live sessions, access replays, and record attendance.",
         "This area keeps the live teaching experience organized and easy to revisit.",
     )
+    render_illustration_panel("Live Studio")
     if not require_learner_account(
         "Live Studio",
         "Create or log into your learner account before you open live links, replay requests, or attendance so the academy can keep your class history together.",
@@ -3372,6 +3851,7 @@ def certification_page() -> None:
         "Mentored training for future Matrika teachers.",
         "This pathway blends practice teaching, feedback loops, and specialty work with mothers and children.",
     )
+    render_illustration_panel("Certification")
     if not require_learner_account(
         "Certification",
         "Create or log into your learner account before you apply so your certification journey, automatic replies, and mentor follow-up stay connected.",
@@ -3471,6 +3951,7 @@ def kids_page() -> None:
         "Movement, stories, and calm-down breath for ages 5-14.",
         "The experience is designed to keep children engaged without feeling rushed or overwhelmed.",
     )
+    render_illustration_panel("Kids Studio")
     if not require_learner_account(
         "Kids Studio",
         "Create or log into your learner account before you send a kids enquiry so the academy can reply automatically and keep parent communication in one place.",
@@ -3580,6 +4061,7 @@ def payments_page() -> None:
         "Choose a plan and share proof when you are ready.",
         "The app keeps payment steps simple and transparent so the team can confirm your seat quickly.",
     )
+    render_illustration_panel("Payments")
     if not require_learner_account(
         "Payments",
         "Create or log into your learner account before you submit payment proof so receipts, confirmations, and follow-up stay tied to your account email.",
@@ -3590,11 +4072,19 @@ def payments_page() -> None:
     render_card_grid(PAYMENT_PLANS, columns=3, class_name="pricing-card")
     st.divider()
 
+    linked_app = preferred_payment_app(learner)
+    linked_handle = preferred_payment_handle(learner)
+    provider_options = [linked_app] + [option for option in PAYMENT_APP_OPTIONS if option != linked_app] if linked_app else PAYMENT_APP_OPTIONS
+
     left, right = st.columns([1.15, 0.85])
     with left:
         payment_actions = st.columns(2)
         with payment_actions[0]:
-            st.link_button("Open UPI payment", PAYMENT_UPI_URL, use_container_width=True)
+            st.link_button(
+                f"Open {linked_app}" if linked_app else "Open UPI payment",
+                payment_app_link(linked_app or "UPI", learner),
+                use_container_width=True,
+            )
         with payment_actions[1]:
             st.link_button(
                 "WhatsApp payment proof",
@@ -3605,6 +4095,21 @@ def payments_page() -> None:
             )
         st.code(PAYMENT_UPI_ID)
         st.caption("If the UPI button does not open on desktop, pay to this UPI ID inside your UPI app.")
+        render_section(
+            "Third-party payment apps",
+            "Choose the app you want to pay from.",
+            "These shortcuts all open the same Matrika UPI destination while keeping your preferred app front and center.",
+        )
+        app_buttons = st.columns(2)
+        for index, app_name in enumerate(PAYMENT_APP_OPTIONS[:4]):
+            with app_buttons[index % 2]:
+                st.link_button(
+                    f"Pay with {app_name}",
+                    payment_app_link(app_name, learner),
+                    use_container_width=True,
+                )
+        if linked_app and linked_handle:
+            st.caption(f"Linked payer profile: {linked_app} · {linked_handle}")
     with right:
         render_card(
             "Need an invoice?",
@@ -3613,6 +4118,23 @@ def payments_page() -> None:
             meta=["Invoice support", "GST ready"],
             class_name="info-card",
         )
+        st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
+        if linked_app:
+            render_card(
+                linked_app,
+                linked_handle or "Preferred payment handle saved in your learner account.",
+                kicker="Linked payment app",
+                meta=["Account connected", "Reusable", learner.get("linked_payment_notes") or "No note"],
+                class_name="info-card",
+            )
+        else:
+            render_card(
+                "No app linked yet",
+                "Link Google Pay, PhonePe, Paytm, BHIM, or another UPI app from the Account page for a smoother payment flow.",
+                kicker="Payment linking",
+                meta=["Account page", "Third-party apps", "Reusable"],
+                class_name="info-card",
+            )
 
     st.divider()
     render_section("Share payment proof", "Upload your payment reference so the team can verify it.", "Saved entries go to a CSV file for easy review.")
@@ -3631,6 +4153,12 @@ def payments_page() -> None:
         plan = st.selectbox("Plan", [item["title"] for item in PAYMENT_PLANS])
         amount = st.number_input("Amount paid (INR)", min_value=500, max_value=100000, step=100)
         method = st.selectbox("Method", ["UPI", "Card", "NetBanking", "Wallet"])
+        provider = st.selectbox("Payment app / provider", provider_options)
+        payer_handle = st.text_input(
+            "Your payer handle",
+            value=linked_handle,
+            help="Example: your UPI ID, wallet number, or the account handle you used in the payment app.",
+        )
         reference = st.text_input("Payment reference / UPI transaction ID")
         notes = st.text_area("Notes (batch, time, coupon)")
         submit = st.form_submit_button("Submit proof")
@@ -3638,6 +4166,7 @@ def payments_page() -> None:
         if submit:
             clean_name = normalize_text(full_name)
             clean_email = normalize_email(learner.get("email", "") or email)
+            clean_payer_handle = normalize_payment_handle(payer_handle)
             clean_reference = normalize_text(reference)
             clean_notes = normalize_text(notes)
 
@@ -3645,6 +4174,8 @@ def payments_page() -> None:
                 st.error("Name, email, and payment reference are required.")
             elif not valid_email(clean_email):
                 st.error("Enter a valid email address.")
+            elif method in {"UPI", "Wallet"} and not clean_payer_handle:
+                st.error("Add the payer handle or app account you used for this payment.")
             else:
                 row = {
                     "submitted_at": current_timestamp(),
@@ -3657,6 +4188,8 @@ def payments_page() -> None:
                     "plan": plan,
                     "amount": amount,
                     "method": method,
+                    "provider": provider,
+                    "payer_handle": clean_payer_handle,
                     "reference": clean_reference,
                     "notes": clean_notes,
                 }
@@ -3674,17 +4207,19 @@ def payments_page() -> None:
                     recipient_name=clean_name,
                     subject="Matrika Academy payment proof received",
                     submission_title="payment proof",
-                    details=[
-                        ("Submitted at", row["submitted_at"]),
-                        ("Time period", time_period),
-                        ("Plan", plan),
-                        ("Amount", f"INR {amount}"),
-                        ("Method", method),
-                        ("Reference", clean_reference),
-                    ],
-                    next_steps="We will verify the payment and confirm your seat on email or WhatsApp.",
-                    account_email=learner.get("email", ""),
-                )
+                        details=[
+                            ("Submitted at", row["submitted_at"]),
+                            ("Time period", time_period),
+                            ("Plan", plan),
+                            ("Amount", f"INR {amount}"),
+                            ("Method", method),
+                            ("Payment app", provider),
+                            ("Payer handle", clean_payer_handle or "Not shared"),
+                            ("Reference", clean_reference),
+                        ],
+                        next_steps="We will verify the payment and confirm your seat on email or WhatsApp.",
+                        account_email=learner.get("email", ""),
+                    )
                 send_user_home(
                     kind="success",
                     title="Payment proof received",
@@ -3699,6 +4234,7 @@ def contact_page() -> None:
         "Reach the team by email, phone, or the form below.",
         "We keep replies friendly and quick so families and teachers always know the next step.",
     )
+    render_illustration_panel("Contact")
     if not require_learner_account(
         "Contact",
         "Create or log into your learner account before you send support messages so the academy can keep every reply tied to the right learner profile.",
@@ -3795,6 +4331,7 @@ def admin_page() -> None:
         "See submission flow, storage status, and recent entries.",
         "This view is meant for the Matrika team to monitor enquiries and confirm that persistence is working.",
     )
+    render_illustration_panel("Admin")
 
     if not admin_authenticated():
         render_card(
