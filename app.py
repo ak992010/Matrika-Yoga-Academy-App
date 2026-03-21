@@ -201,14 +201,6 @@ PAGE_NAMES = [
     "Admin",
 ]
 NAV_PAGE_NAMES = [page for page in PAGE_NAMES if page != "Admin"]
-ACCOUNT_REQUIRED_PAGES = {
-    "Admissions",
-    "Live Studio",
-    "Certification",
-    "Kids Studio",
-    "Payments",
-    "Contact",
-}
 
 TIME_PERIOD_OPTIONS = [
     "Morning",
@@ -1326,11 +1318,6 @@ def require_learner_account(page_name: str, description: str) -> bool:
             use_container_width=True,
         )
     return False
-
-
-def account_field_value(field_name: str, fallback: str = "") -> str:
-    profile = current_learner_profile()
-    return str(profile.get(field_name, "") or fallback)
 
 
 def sanitize_rows_for_admin(csv_name: str, rows: list[dict[str, str]]) -> list[dict[str, str]]:
