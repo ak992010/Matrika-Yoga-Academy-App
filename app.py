@@ -803,10 +803,25 @@ def build_mailto_url(subject: str, body: str) -> str:
     return f"mailto:{CONTACT_EMAIL}?subject={quote(subject)}&body={quote(body)}"
 
 
-def payment_app_link(app_name: str, learner: Mapping[str, object] | None = None) -> str:
+def payment_app_link(
+    app_name: str,
+    learner: Mapping[str, object] | None = None,
+    *,
+    amount_inr: int | float | None = None,
+    note: str = "",
+) -> str:
     learner = learner or {}
-    note = normalize_text(str(learner.get("full_name", "")) or "Matrika learner")
-    return f"{PAYMENT_UPI_URL}&tn={quote(f'{app_name} payment for {note}')}"
+    learner_name = normalize_text(str(learner.get("full_name", "")) or "Matrika learner")
+    payment_note = normalize_text(note) or f"{app_name} payment for {learner_name}"
+    link = f"{PAYMENT_UPI_URL}&tn={quote(payment_note)}"
+    if amount_inr not in (None, "", 0):
+        try:
+            amount = float(amount_inr)
+        except (TypeError, ValueError):
+            amount = 0
+        if amount > 0:
+            link = f"{link}&am={amount:.2f}"
+    return link
 
 
 def payment_plan_by_title(title: str) -> dict[str, object]:
@@ -831,6 +846,15 @@ def razorpay_configured() -> bool:
     )
 
 
+def razorpay_mode() -> str:
+    key_id = str(get_secret_value(RAZORPAY_KEY_ID_SECRET, "")).strip().lower()
+    if key_id.startswith("rzp_live_"):
+        return "live"
+    if key_id.startswith("rzp_test_"):
+        return "test"
+    return "unknown"
+
+
 def razorpay_amount_subunits(amount_inr: int | float) -> int:
     try:
         return max(int(round(float(amount_inr) * 100)), 0)
@@ -847,6 +871,52 @@ def razorpay_reference_id(plan: str, email: str) -> str:
 
 def razorpay_callback_url() -> str:
     return PUBLIC_SITE_URL
+
+
+@st.cache_data(show_spinner=False)
+def qr_code_png_bytes(data: str) -> bytes | None:
+    clean_data = str(data).strip()
+    if not clean_data:
+        return None
+    try:
+        import qrcode
+    except ImportError:
+        return None
+
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=2,
+    )
+    qr.add_data(clean_data)
+    qr.make(fit=True)
+    image = qr.make_image(fill_color="#33512f", back_color="#f5f8ef")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def render_payment_qr(
+    title: str,
+    data: str,
+    caption: str,
+    *,
+    meta: list[str] | tuple[str, ...] | None = None,
+) -> None:
+    qr_bytes = qr_code_png_bytes(data)
+    render_card(
+        title,
+        caption,
+        kicker="Scan to pay",
+        meta=list(meta or ["QR ready", "Mobile friendly"]),
+        class_name="info-card",
+    )
+    if qr_bytes:
+        st.image(qr_bytes, use_container_width=True)
+    else:
+        st.caption("QR generation becomes available once the QR package is installed on the host.")
+        st.code(data)
 
 
 def razorpay_notes_payload(
@@ -4746,6 +4816,7 @@ def payments_page() -> None:
         else PAYMENT_PROVIDER_OPTIONS
     )
     latest_link = st.session_state.get("latest_razorpay_link") or latest_razorpay_link(learner.get("email", ""))
+    academy_upi_qr = payment_app_link(linked_app or "UPI", learner)
 
     left, right = st.columns([1.15, 0.85])
     with left:
@@ -4869,6 +4940,34 @@ def payments_page() -> None:
                         st.session_state.latest_razorpay_link = updated_link
                         st.success(f"Razorpay link status is now {updated_link.get('status', 'created')}.")
                         st.rerun()
+        qr_cols = st.columns(2)
+        with qr_cols[0]:
+            render_payment_qr(
+                "Scan UPI QR",
+                academy_upi_qr,
+                "Scan this on another device to open the Matrika Academy UPI payment destination.",
+                meta=["UPI", PAYMENT_UPI_ID, linked_app or "Any UPI app"],
+            )
+        with qr_cols[1]:
+            if latest_link and latest_link.get("short_url"):
+                render_payment_qr(
+                    "Scan Razorpay checkout",
+                    str(latest_link.get("short_url", "")),
+                    "Scan this from another device to open the secure hosted Razorpay checkout link.",
+                    meta=[
+                        str(latest_link.get("status", "created")).replace("_", " ").title(),
+                        str(latest_link.get("plan", "No plan")),
+                        f"INR {latest_link.get('amount', '')}",
+                    ],
+                )
+            else:
+                render_card(
+                    "Razorpay QR appears after link creation",
+                    "Create a secure Razorpay payment link above and the payment page will immediately show a scannable QR for that checkout.",
+                    kicker="QR ready after link",
+                    meta=["Hosted checkout", "Another-device scan", "Secure"],
+                    class_name="info-card",
+                )
         st.divider()
         payment_actions = st.columns(2)
         with payment_actions[0]:
@@ -4912,6 +5011,16 @@ def payments_page() -> None:
         )
         st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
         if razorpay_configured():
+            current_mode = razorpay_mode()
+            if current_mode == "test":
+                render_card(
+                    "Razorpay is in test mode",
+                    "Checkout links can be created and scanned successfully, but they will not collect real payments until live Razorpay keys are added in the host environment.",
+                    kicker="Test payments only",
+                    meta=["rzp_test", "Safe for QA", "Switch to live keys later"],
+                    class_name="info-card",
+                )
+                st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
             render_card(
                 "Why Razorpay here?",
                 "The hosted checkout keeps the payment step cleaner on mobile and desktop, while the academy still keeps your learner account, plan, and follow-up context connected.",
