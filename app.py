@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import csv
 import html
 import io
@@ -7,6 +8,7 @@ import json
 import re
 import smtplib
 import ssl
+import time
 from collections.abc import Mapping
 from datetime import datetime
 from email.message import EmailMessage
@@ -19,7 +21,7 @@ import streamlit as st
 APP_DIR = Path(__file__).parent
 DATA_DIR = APP_DIR / "submissions"
 DATA_DIR.mkdir(exist_ok=True)
-LOGO_PATH = APP_DIR / "assets" / "matrika_logo.png"
+LOGO_PATH = APP_DIR / "assets" / "matrika_logo.svg"
 LIVE_ZOOM_URL = "https://us04web.zoom.us/j/8048675666?pwd=KF3fzQ5y1ZaDibDafMrbWHyCHl2jqV.1"
 BACKUP_MEET_URL = ""
 REPLAY_DRIVE_URL = ""
@@ -27,12 +29,14 @@ PAYMENT_UPI_ID = "pdr14@ybl"
 PAYMENT_UPI_URL = f"upi://pay?pa={PAYMENT_UPI_ID}&pn=Matrika%20Academy&cu=INR"
 CONTACT_PHONE = "7893939545"
 CONTACT_EMAIL = "drpeddamandadi@gmail.com"
+HOME_HREF = "/"
 GOOGLE_SHEETS_SCOPE = ("https://www.googleapis.com/auth/spreadsheets",)
 GOOGLE_SERVICE_ACCOUNT_SECRET = "google_service_account_json"
 GOOGLE_SHEET_ID_SECRET = "google_sheet_id"
 ADMIN_PASSWORD_SECRET = "admin_password"
 IST_ZONE = ZoneInfo("Asia/Kolkata")
 OVERVIEW_WORKSHEET = "Sheet1"
+SUBMISSION_COOLDOWN_SECONDS = 20
 SMTP_HOST_SECRET = "smtp_host"
 SMTP_PORT_SECRET = "smtp_port"
 SMTP_USERNAME_SECRET = "smtp_username"
@@ -53,6 +57,7 @@ SUBMISSION_SCHEMAS = {
             "track",
             "learner_stage",
             "mode",
+            "time_period",
             "preferred_time",
             "goals",
             "notes",
@@ -61,17 +66,17 @@ SUBMISSION_SCHEMAS = {
     "attendance.csv": {
         "worksheet": "attendance",
         "label": "Live attendance",
-        "headers": ["submitted_at", "page", "name", "email", "session", "mode"],
+        "headers": ["submitted_at", "page", "name", "email", "session", "mode", "time_period"],
     },
     "training_applications.csv": {
         "worksheet": "training_applications",
         "label": "Certification applications",
-        "headers": ["submitted_at", "page", "name", "email", "experience", "motivation"],
+        "headers": ["submitted_at", "page", "name", "email", "time_period", "experience", "motivation"],
     },
     "kids_enquiries.csv": {
         "worksheet": "kids_enquiries",
         "label": "Kids studio enquiries",
-        "headers": ["submitted_at", "page", "parent", "child", "age", "email"],
+        "headers": ["submitted_at", "page", "parent", "child", "age", "email", "time_period"],
     },
     "payments.csv": {
         "worksheet": "payments",
@@ -81,6 +86,7 @@ SUBMISSION_SCHEMAS = {
             "page",
             "name",
             "email",
+            "time_period",
             "plan",
             "amount",
             "method",
@@ -91,7 +97,7 @@ SUBMISSION_SCHEMAS = {
     "contact_messages.csv": {
         "worksheet": "contact_messages",
         "label": "Contact messages",
-        "headers": ["submitted_at", "page", "name", "email", "message"],
+        "headers": ["submitted_at", "page", "name", "email", "time_period", "message"],
     },
 }
 
@@ -106,6 +112,14 @@ PAGE_NAMES = [
     "Payments",
     "Contact",
     "Admin",
+]
+
+TIME_PERIOD_OPTIONS = [
+    "Morning",
+    "Afternoon",
+    "Evening",
+    "Weekend",
+    "Flexible",
 ]
 
 HOME_STATS = [
@@ -649,10 +663,7 @@ def ensure_google_worksheet(csv_name: str, row: dict | None = None):
         )
 
     if headers and worksheet.row_values(1) != headers:
-        if any(worksheet.row_values(1)):
-            worksheet.insert_row(headers, index=1, value_input_option="RAW")
-        else:
-            worksheet.update("A1", [headers], value_input_option="RAW")
+        worksheet.update("A1", [headers], value_input_option="RAW")
     return worksheet
 
 
@@ -851,22 +862,105 @@ def rows_to_csv_bytes(rows: list[dict[str, str]]) -> bytes:
 
 def save_row(csv_name: str, row: dict) -> None:
     file_path = DATA_DIR / csv_name
+    headers = worksheet_headers_for(csv_name, row)
+    if not headers:
+        headers = list(row.keys())
     if google_persistence_enabled():
         try:
             append_row_to_google_sheet(csv_name, row)
         except Exception as exc:
             st.warning(f"Google Sheets sync failed for {csv_name}: {exc}")
 
-    exists = file_path.exists()
+    existing_rows: list[dict[str, str]] = []
+    if file_path.exists():
+        with file_path.open("r", newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            current_headers = reader.fieldnames or []
+            existing_rows = list(reader)
+        if current_headers != headers:
+            with file_path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=headers)
+                writer.writeheader()
+                for existing_row in existing_rows:
+                    writer.writerow({key: existing_row.get(key, "") for key in headers})
+                writer.writerow({key: row.get(key, "") for key in headers})
+            return
+
     with file_path.open("a", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=row.keys())
-        if not exists:
+        writer = csv.DictWriter(handle, fieldnames=headers)
+        if not file_path.exists() or file_path.stat().st_size == 0:
             writer.writeheader()
-        writer.writerow(row)
+        writer.writerow({key: row.get(key, "") for key in headers})
 
 
 def jump_to(page: str) -> None:
     st.session_state.page = page
+
+
+@st.cache_data(show_spinner=False)
+def logo_data_uri() -> str:
+    if not LOGO_PATH.exists():
+        return ""
+
+    suffix = LOGO_PATH.suffix.lower()
+    mime_type = "image/svg+xml" if suffix == ".svg" else "image/png"
+    encoded = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
+    return f"data:{mime_type};base64,{encoded}"
+
+
+def submission_signature(csv_name: str, row: dict) -> str:
+    comparable_row = {key: value for key, value in row.items() if key != "submitted_at"}
+    return json.dumps({"csv_name": csv_name, "row": comparable_row}, sort_keys=True, default=str)
+
+
+def duplicate_submission_detected(csv_name: str, row: dict) -> bool:
+    now = time.time()
+    recent = {
+        str(signature): float(timestamp)
+        for signature, timestamp in st.session_state.get("recent_submissions", {}).items()
+        if now - float(timestamp) < SUBMISSION_COOLDOWN_SECONDS
+    }
+    signature = submission_signature(csv_name, row)
+    if signature in recent:
+        st.session_state.recent_submissions = recent
+        return True
+
+    recent[signature] = now
+    st.session_state.recent_submissions = recent
+    return False
+
+
+def confirmation_flash_detail(result: tuple[bool, str] | None) -> str:
+    if not result:
+        return ""
+
+    delivered, message = result
+    if delivered:
+        return message
+    if "not configured yet" in message:
+        return "Confirmation emails will start once SMTP secrets are added."
+    return message
+
+
+def queue_flash_notice(kind: str, title: str, body: str, detail: str = "") -> None:
+    st.session_state.flash_notice = {
+        "kind": kind,
+        "title": title,
+        "body": body,
+        "detail": detail,
+    }
+
+
+def send_user_home(
+    *,
+    kind: str,
+    title: str,
+    body: str,
+    email_result: tuple[bool, str] | None = None,
+) -> None:
+    queue_flash_notice(kind, title, body, confirmation_flash_detail(email_result))
+    jump_to("Dashboard")
+    st.rerun()
 
 
 def chips(items: list[str] | tuple[str, ...]) -> str:
@@ -1006,6 +1100,135 @@ def apply_theme() -> None:
             margin-top: 0.5rem;
             font-size: 0.92rem;
             line-height: 1.55;
+        }
+
+        .brand-fallback {
+            width: 64px;
+            height: 64px;
+            display: grid;
+            place-items: center;
+            border-radius: 18px;
+            background: linear-gradient(135deg, var(--rose), var(--gold));
+            color: white;
+            font-family: "Cormorant Garamond", serif;
+            font-size: 2rem;
+            font-weight: 700;
+            box-shadow: 0 12px 26px rgba(117, 79, 92, 0.16);
+        }
+
+        .topbar-shell {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.9rem 1.1rem;
+            padding: 0.95rem 1.1rem;
+            margin-bottom: 1rem;
+            border-radius: 28px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.84);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .topbar-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.9rem;
+            text-decoration: none;
+            color: var(--ink) !important;
+        }
+
+        .topbar-brand:hover {
+            color: var(--ink) !important;
+        }
+
+        .topbar-logo {
+            width: 58px;
+            height: 58px;
+            border-radius: 18px;
+            object-fit: cover;
+            box-shadow: 0 12px 24px rgba(117, 79, 92, 0.16);
+        }
+
+        .brand-lockup {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+
+        .brand-label {
+            font-family: "Cormorant Garamond", serif;
+            font-size: 2rem;
+            line-height: 0.9;
+        }
+
+        .brand-subtitle {
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.4;
+        }
+
+        .topbar-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+        }
+
+        .topbar-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 2.5rem;
+            padding: 0.55rem 0.9rem;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.86);
+            color: var(--ink) !important;
+            text-decoration: none;
+            font-weight: 800;
+            box-shadow: 0 10px 20px rgba(63, 42, 51, 0.08);
+        }
+
+        .topbar-chip:hover {
+            color: var(--ink) !important;
+            transform: translateY(-1px);
+        }
+
+        .flash-banner {
+            margin-bottom: 1rem;
+            padding: 1rem 1.1rem;
+            border-radius: 24px;
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+        }
+
+        .flash-banner h3 {
+            margin: 0 0 0.35rem;
+            font-size: 1.4rem;
+        }
+
+        .flash-banner p {
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .flash-banner-detail {
+            margin-top: 0.55rem;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .flash-banner-success {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(235, 247, 235, 0.92));
+        }
+
+        .flash-banner-info {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(235, 240, 247, 0.92));
+        }
+
+        .flash-banner-warning {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(250, 238, 228, 0.94));
         }
 
         .eyebrow {
@@ -1282,6 +1505,27 @@ def apply_theme() -> None:
             box-shadow: 0 10px 20px rgba(63, 42, 51, 0.08) !important;
         }
 
+        div[data-testid="stSpinner"],
+        .stSpinner {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 250, 244, 0.48);
+            backdrop-filter: blur(4px);
+        }
+
+        div[data-testid="stSpinner"] > div,
+        .stSpinner > div {
+            padding: 1rem 1.15rem;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+        }
+
         hr {
             border-color: rgba(96, 72, 84, 0.12);
         }
@@ -1293,6 +1537,18 @@ def apply_theme() -> None:
         }
 
         @media (max-width: 760px) {
+            .topbar-shell {
+                padding: 0.9rem 0.95rem;
+            }
+
+            .brand-label {
+                font-size: 1.75rem;
+            }
+
+            .brand-subtitle {
+                font-size: 0.86rem;
+            }
+
             .sidebar-brand h2 {
                 font-size: 1.45rem;
             }
@@ -1402,14 +1658,70 @@ def render_section(eyebrow: str, title: str, body: str) -> None:
     )
 
 
+def render_flash_notice() -> None:
+    notice = st.session_state.pop("flash_notice", None)
+    if not notice:
+        return
+
+    detail_html = (
+        f"<div class='flash-banner-detail'>{esc(notice.get('detail', ''))}</div>"
+        if notice.get("detail")
+        else ""
+    )
+    kind = str(notice.get("kind", "success")).lower()
+    st.markdown(
+        f"""
+        <div class="flash-banner flash-banner-{esc(kind)}">
+            <h3>{esc(notice.get("title", ""))}</h3>
+            <p>{esc(notice.get("body", ""))}</p>
+            {detail_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_topbar() -> None:
+    logo_src = logo_data_uri()
+    if logo_src:
+        logo_markup = f"<img src='{logo_src}' alt='Matrika Academy logo' class='topbar-logo' />"
+    else:
+        logo_markup = "<div class='brand-fallback topbar-logo'>M</div>"
+
+    st.markdown(
+        f"""
+        <div class="topbar-shell">
+            <a class="topbar-brand" href="{HOME_HREF}" target="_self">
+                {logo_markup}
+                <div class="brand-lockup">
+                    <span class="brand-label">Matrika Academy</span>
+                    <span class="brand-subtitle">Tap the logo anytime to return home and restart the journey calmly.</span>
+                </div>
+            </a>
+            <div class="topbar-actions">
+                <a class="topbar-chip" href="{HOME_HREF}" target="_self">Home</a>
+                <a class="topbar-chip" href="{esc(LIVE_ZOOM_URL)}" target="_blank" rel="noopener noreferrer">Join live</a>
+                <a class="topbar-chip" href="{esc(build_whatsapp_url('Hi Matrika Academy, I need help with classes or admissions.'))}" target="_blank" rel="noopener noreferrer">Support</a>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_sidebar() -> None:
     with st.sidebar:
-        if LOGO_PATH.exists():
-            st.image(str(LOGO_PATH), use_container_width=True)
+        logo_src = logo_data_uri()
+        logo_markup = (
+            f"<img src='{logo_src}' alt='Matrika Academy logo' />"
+            if logo_src
+            else "<div class='brand-fallback'>M</div>"
+        )
         st.markdown(
-            """
+            f"""
             <div class="sidebar-card">
                 <div class="sidebar-brand">
+                    {logo_markup}
                     <div>
                         <h2>Matrika Academy</h2>
                         <p>Live classes, kids yoga, and teacher training.</p>
@@ -1721,6 +2033,7 @@ def admissions_page() -> None:
                 ],
             )
             mode = st.selectbox("Preferred mode", ["Live", "Replay", "Hybrid"])
+            time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
             preferred_time = st.selectbox("Preferred time", ["Morning", "Afternoon", "Evening"])
             goals = st.text_area("What would you like help with?")
             notes = st.text_area("Health notes / availability (optional)")
@@ -1740,38 +2053,47 @@ def admissions_page() -> None:
                 elif phone and not valid_phone(phone):
                     st.error("Enter a valid phone number or leave it blank.")
                 else:
-                    save_row(
-                        "bookings.csv",
-                        {
-                            "submitted_at": current_timestamp(),
-                            "page": "Admissions",
-                            "name": clean_name,
-                            "email": clean_email,
-                            "phone": clean_phone,
-                            "track": track,
-                            "learner_stage": learner_stage,
-                            "mode": mode,
-                            "preferred_time": preferred_time,
-                            "goals": clean_goals,
-                            "notes": clean_notes,
-                        },
-                    )
-                    st.success("Your request was saved. We will contact you shortly.")
-                    render_confirmation_result(
-                        send_confirmation_email(
-                            to_email=clean_email,
-                            recipient_name=clean_name,
-                            subject="Matrika Academy admission request received",
-                            submission_title="admissions request",
-                            details=[
-                                ("Submitted at", current_timestamp()),
-                                ("Track", track),
-                                ("Learner stage", learner_stage),
-                                ("Preferred mode", mode),
-                                ("Preferred time", preferred_time),
-                            ],
-                            next_steps="We will review your request and contact you with the best batch or session plan.",
+                    row = {
+                        "submitted_at": current_timestamp(),
+                        "page": "Admissions",
+                        "name": clean_name,
+                        "email": clean_email,
+                        "phone": clean_phone,
+                        "track": track,
+                        "learner_stage": learner_stage,
+                        "mode": mode,
+                        "time_period": time_period,
+                        "preferred_time": preferred_time,
+                        "goals": clean_goals,
+                        "notes": clean_notes,
+                    }
+                    if duplicate_submission_detected("bookings.csv", row):
+                        send_user_home(
+                            kind="info",
+                            title="Admissions request already received",
+                            body="We already saved this request, so there is no need to submit it again.",
                         )
+                    save_row("bookings.csv", row)
+                    email_result = send_confirmation_email(
+                        to_email=clean_email,
+                        recipient_name=clean_name,
+                        subject="Matrika Academy admission request received",
+                        submission_title="admissions request",
+                        details=[
+                            ("Submitted at", row["submitted_at"]),
+                            ("Track", track),
+                            ("Learner stage", learner_stage),
+                            ("Preferred mode", mode),
+                            ("Time period", time_period),
+                            ("Preferred time", preferred_time),
+                        ],
+                        next_steps="We will review your request and contact you with the best batch or session plan.",
+                    )
+                    send_user_home(
+                        kind="success",
+                        title="Admissions request received",
+                        body="Your request was saved and you have been returned to the home page.",
+                        email_result=email_result,
                     )
 
 
@@ -1861,6 +2183,7 @@ def live_studio_page() -> None:
                 ["Garbhasanskara", "Trimester", "Prenatal", "Postnatal", "Kids", "Teacher Training"],
             )
             mode = st.selectbox("Mode", ["Live", "Replay"])
+            time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
             submit = st.form_submit_button("Save attendance")
 
             if submit:
@@ -1872,31 +2195,40 @@ def live_studio_page() -> None:
                 elif not valid_email(clean_email):
                     st.error("Enter a valid email address.")
                 else:
-                    save_row(
-                        "attendance.csv",
-                        {
-                            "submitted_at": current_timestamp(),
-                            "page": "Live Studio",
-                            "name": clean_name,
-                            "email": clean_email,
-                            "session": session,
-                            "mode": mode,
-                        },
-                    )
-                    st.success("Attendance saved.")
-                    render_confirmation_result(
-                        send_confirmation_email(
-                            to_email=clean_email,
-                            recipient_name=clean_name,
-                            subject="Matrika Academy attendance recorded",
-                            submission_title="attendance update",
-                            details=[
-                                ("Submitted at", current_timestamp()),
-                                ("Session", session),
-                                ("Mode", mode),
-                            ],
-                            next_steps="Your attendance has been recorded. If you need the replay or a class link, reply to this email.",
+                    row = {
+                        "submitted_at": current_timestamp(),
+                        "page": "Live Studio",
+                        "name": clean_name,
+                        "email": clean_email,
+                        "session": session,
+                        "mode": mode,
+                        "time_period": time_period,
+                    }
+                    if duplicate_submission_detected("attendance.csv", row):
+                        send_user_home(
+                            kind="info",
+                            title="Attendance already received",
+                            body="We already saved this attendance entry, so there is no need to submit it again.",
                         )
+                    save_row("attendance.csv", row)
+                    email_result = send_confirmation_email(
+                        to_email=clean_email,
+                        recipient_name=clean_name,
+                        subject="Matrika Academy attendance recorded",
+                        submission_title="attendance update",
+                        details=[
+                            ("Submitted at", row["submitted_at"]),
+                            ("Session", session),
+                            ("Mode", mode),
+                            ("Time period", time_period),
+                        ],
+                        next_steps="Your attendance has been recorded. If you need the replay or a class link, reply to this email.",
+                    )
+                    send_user_home(
+                        kind="success",
+                        title="Attendance saved",
+                        body="Your attendance was recorded and you have been returned to the home page.",
+                        email_result=email_result,
                     )
 
 
@@ -1925,6 +2257,7 @@ def certification_page() -> None:
         with st.form("training_form"):
             full_name = st.text_input("Full name")
             email = st.text_input("Email")
+            time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
             experience = st.selectbox(
                 "Experience",
                 ["Beginner", "Practitioner (1+ yr)", "Intermediate", "Advanced"],
@@ -1942,30 +2275,39 @@ def certification_page() -> None:
                 elif not valid_email(clean_email):
                     st.error("Enter a valid email address.")
                 else:
-                    save_row(
-                        "training_applications.csv",
-                        {
-                            "submitted_at": current_timestamp(),
-                            "page": "Certification",
-                            "name": clean_name,
-                            "email": clean_email,
-                            "experience": experience,
-                            "motivation": clean_motivation,
-                        },
-                    )
-                    st.success("Application received. Mentors will reach out.")
-                    render_confirmation_result(
-                        send_confirmation_email(
-                            to_email=clean_email,
-                            recipient_name=clean_name,
-                            subject="Matrika Academy certification application received",
-                            submission_title="certification application",
-                            details=[
-                                ("Submitted at", current_timestamp()),
-                                ("Experience", experience),
-                            ],
-                            next_steps="Our mentors will review your application and reach out with the next steps.",
+                    row = {
+                        "submitted_at": current_timestamp(),
+                        "page": "Certification",
+                        "name": clean_name,
+                        "email": clean_email,
+                        "time_period": time_period,
+                        "experience": experience,
+                        "motivation": clean_motivation,
+                    }
+                    if duplicate_submission_detected("training_applications.csv", row):
+                        send_user_home(
+                            kind="info",
+                            title="Certification application already received",
+                            body="We already saved this application, so there is no need to submit it again.",
                         )
+                    save_row("training_applications.csv", row)
+                    email_result = send_confirmation_email(
+                        to_email=clean_email,
+                        recipient_name=clean_name,
+                        subject="Matrika Academy certification application received",
+                        submission_title="certification application",
+                        details=[
+                            ("Submitted at", row["submitted_at"]),
+                            ("Time period", time_period),
+                            ("Experience", experience),
+                        ],
+                        next_steps="Our mentors will review your application and reach out with the next steps.",
+                    )
+                    send_user_home(
+                        kind="success",
+                        title="Certification application received",
+                        body="Your application was saved and you have been returned to the home page.",
+                        email_result=email_result,
                     )
 
 
@@ -2008,6 +2350,7 @@ def kids_page() -> None:
         child = st.text_input("Child name")
         age = st.number_input("Child age", min_value=3, max_value=18, step=1)
         email = st.text_input("Contact email")
+        time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
         submit = st.form_submit_button("Enroll or enquire")
 
         if submit:
@@ -2020,31 +2363,40 @@ def kids_page() -> None:
             elif not valid_email(clean_email):
                 st.error("Enter a valid email address.")
             else:
-                save_row(
-                    "kids_enquiries.csv",
-                    {
-                        "submitted_at": current_timestamp(),
-                        "page": "Kids Studio",
-                        "parent": clean_parent,
-                        "child": clean_child,
-                        "age": age,
-                        "email": clean_email,
-                    },
-                )
-                st.success("Enquiry received. We will share the kids schedule and links.")
-                render_confirmation_result(
-                    send_confirmation_email(
-                        to_email=clean_email,
-                        recipient_name=clean_parent,
-                        subject="Matrika Academy kids studio enquiry received",
-                        submission_title="kids studio enquiry",
-                        details=[
-                            ("Submitted at", current_timestamp()),
-                            ("Child name", clean_child),
-                            ("Age", age),
-                        ],
-                        next_steps="We will share the kids schedule, available session options, and joining details soon.",
+                row = {
+                    "submitted_at": current_timestamp(),
+                    "page": "Kids Studio",
+                    "parent": clean_parent,
+                    "child": clean_child,
+                    "age": age,
+                    "email": clean_email,
+                    "time_period": time_period,
+                }
+                if duplicate_submission_detected("kids_enquiries.csv", row):
+                    send_user_home(
+                        kind="info",
+                        title="Kids enquiry already received",
+                        body="We already saved this enquiry, so there is no need to submit it again.",
                     )
+                save_row("kids_enquiries.csv", row)
+                email_result = send_confirmation_email(
+                    to_email=clean_email,
+                    recipient_name=clean_parent,
+                    subject="Matrika Academy kids studio enquiry received",
+                    submission_title="kids studio enquiry",
+                    details=[
+                        ("Submitted at", row["submitted_at"]),
+                        ("Child name", clean_child),
+                        ("Age", age),
+                        ("Time period", time_period),
+                    ],
+                    next_steps="We will share the kids schedule, available session options, and joining details soon.",
+                )
+                send_user_home(
+                    kind="success",
+                    title="Kids enquiry received",
+                    body="Your enquiry was saved and you have been returned to the home page.",
+                    email_result=email_result,
                 )
 
 
@@ -2086,6 +2438,7 @@ def payments_page() -> None:
     with st.form("payment_form"):
         full_name = st.text_input("Name")
         email = st.text_input("Email")
+        time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
         plan = st.selectbox("Plan", [item["title"] for item in PAYMENT_PLANS])
         amount = st.number_input("Amount paid (INR)", min_value=500, max_value=100000, step=100)
         method = st.selectbox("Method", ["UPI", "Card", "NetBanking", "Wallet"])
@@ -2104,36 +2457,45 @@ def payments_page() -> None:
             elif not valid_email(clean_email):
                 st.error("Enter a valid email address.")
             else:
-                save_row(
-                    "payments.csv",
-                    {
-                        "submitted_at": current_timestamp(),
-                        "page": "Payments",
-                        "name": clean_name,
-                        "email": clean_email,
-                        "plan": plan,
-                        "amount": amount,
-                        "method": method,
-                        "reference": clean_reference,
-                        "notes": clean_notes,
-                    },
-                )
-                st.success("Payment recorded. We will verify and confirm your seat.")
-                render_confirmation_result(
-                    send_confirmation_email(
-                        to_email=clean_email,
-                        recipient_name=clean_name,
-                        subject="Matrika Academy payment proof received",
-                        submission_title="payment proof",
-                        details=[
-                            ("Submitted at", current_timestamp()),
-                            ("Plan", plan),
-                            ("Amount", f"INR {amount}"),
-                            ("Method", method),
-                            ("Reference", clean_reference),
-                        ],
-                        next_steps="We will verify the payment and confirm your seat on email or WhatsApp.",
+                row = {
+                    "submitted_at": current_timestamp(),
+                    "page": "Payments",
+                    "name": clean_name,
+                    "email": clean_email,
+                    "time_period": time_period,
+                    "plan": plan,
+                    "amount": amount,
+                    "method": method,
+                    "reference": clean_reference,
+                    "notes": clean_notes,
+                }
+                if duplicate_submission_detected("payments.csv", row):
+                    send_user_home(
+                        kind="info",
+                        title="Payment proof already received",
+                        body="We already saved this payment proof, so there is no need to submit it again.",
                     )
+                save_row("payments.csv", row)
+                email_result = send_confirmation_email(
+                    to_email=clean_email,
+                    recipient_name=clean_name,
+                    subject="Matrika Academy payment proof received",
+                    submission_title="payment proof",
+                    details=[
+                        ("Submitted at", row["submitted_at"]),
+                        ("Time period", time_period),
+                        ("Plan", plan),
+                        ("Amount", f"INR {amount}"),
+                        ("Method", method),
+                        ("Reference", clean_reference),
+                    ],
+                    next_steps="We will verify the payment and confirm your seat on email or WhatsApp.",
+                )
+                send_user_home(
+                    kind="success",
+                    title="Payment proof received",
+                    body="Your payment entry was saved and you have been returned to the home page.",
+                    email_result=email_result,
                 )
 
 
@@ -2164,6 +2526,7 @@ def contact_page() -> None:
         with st.form("contact_form"):
             full_name = st.text_input("Name")
             email = st.text_input("Email")
+            time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
             message = st.text_area("Message")
             submit = st.form_submit_button("Send message")
 
@@ -2177,29 +2540,38 @@ def contact_page() -> None:
                 elif not valid_email(clean_email):
                     st.error("Enter a valid email address.")
                 else:
-                    save_row(
-                        "contact_messages.csv",
-                        {
-                            "submitted_at": current_timestamp(),
-                            "page": "Contact",
-                            "name": clean_name,
-                            "email": clean_email,
-                            "message": clean_message,
-                        },
-                    )
-                    st.success("Message sent. We will reply soon.")
-                    render_confirmation_result(
-                        send_confirmation_email(
-                            to_email=clean_email,
-                            recipient_name=clean_name,
-                            subject="Matrika Academy message received",
-                            submission_title="support message",
-                            details=[
-                                ("Submitted at", current_timestamp()),
-                                ("Message", clean_message),
-                            ],
-                            next_steps="We have received your message and will reply as soon as possible.",
+                    row = {
+                        "submitted_at": current_timestamp(),
+                        "page": "Contact",
+                        "name": clean_name,
+                        "email": clean_email,
+                        "time_period": time_period,
+                        "message": clean_message,
+                    }
+                    if duplicate_submission_detected("contact_messages.csv", row):
+                        send_user_home(
+                            kind="info",
+                            title="Message already received",
+                            body="We already saved this message, so there is no need to submit it again.",
                         )
+                    save_row("contact_messages.csv", row)
+                    email_result = send_confirmation_email(
+                        to_email=clean_email,
+                        recipient_name=clean_name,
+                        subject="Matrika Academy message received",
+                        submission_title="support message",
+                        details=[
+                            ("Submitted at", row["submitted_at"]),
+                            ("Time period", time_period),
+                            ("Message", clean_message),
+                        ],
+                        next_steps="We have received your message and will reply as soon as possible.",
+                    )
+                    send_user_home(
+                        kind="success",
+                        title="Message received",
+                        body="Your message was saved and you have been returned to the home page.",
+                        email_result=email_result,
                     )
 
 
@@ -2327,6 +2699,7 @@ PAGE_ROUTES = {
 
 def initialize_state() -> None:
     st.session_state.setdefault("page", PAGE_NAMES[0])
+    st.session_state.setdefault("recent_submissions", {})
     if st.session_state.page not in PAGE_NAMES:
         st.session_state.page = PAGE_NAMES[0]
 
@@ -2338,6 +2711,8 @@ def main() -> None:
         ensure_google_submission_sheets()
         st.session_state.google_sheet_setup_ready = True
     render_sidebar()
+    render_topbar()
+    render_flash_notice()
     PAGE_ROUTES[st.session_state.page]()
 
 
