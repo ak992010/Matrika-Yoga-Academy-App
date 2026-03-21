@@ -5,6 +5,7 @@ import csv
 import html
 import io
 import json
+import os
 import re
 import smtplib
 import ssl
@@ -43,6 +44,7 @@ SMTP_USERNAME_SECRET = "smtp_username"
 SMTP_PASSWORD_SECRET = "smtp_password"
 SMTP_FROM_EMAIL_SECRET = "smtp_from_email"
 SMTP_FROM_NAME_SECRET = "smtp_from_name"
+GOOGLE_SERVICE_ACCOUNT_FILE_ENV = "GOOGLE_SERVICE_ACCOUNT_FILE"
 
 SUBMISSION_SCHEMAS = {
     "bookings.csv": {
@@ -469,9 +471,39 @@ def render_support_actions(subject: str, message: str, *, include_call: bool = T
 
 
 def google_persistence_enabled() -> bool:
-    return bool(st.secrets.get(GOOGLE_SERVICE_ACCOUNT_SECRET, "")) and bool(
-        st.secrets.get(GOOGLE_SHEET_ID_SECRET, "")
-    )
+    return bool(get_google_service_account_secret()) and bool(get_secret_value(GOOGLE_SHEET_ID_SECRET))
+
+
+def env_name_for(secret_key: str) -> str:
+    return secret_key.upper()
+
+
+def get_secret_value(secret_key: str, default: object = "") -> object:
+    streamlit_value = st.secrets.get(secret_key, None)
+    if isinstance(streamlit_value, Mapping):
+        return dict(streamlit_value)
+    if streamlit_value not in (None, ""):
+        return streamlit_value
+    return os.getenv(env_name_for(secret_key), default)
+
+
+def get_google_service_account_secret() -> object:
+    streamlit_value = st.secrets.get(GOOGLE_SERVICE_ACCOUNT_SECRET, None)
+    if isinstance(streamlit_value, Mapping):
+        return dict(streamlit_value)
+    if streamlit_value not in (None, ""):
+        return streamlit_value
+
+    env_value = os.getenv(env_name_for(GOOGLE_SERVICE_ACCOUNT_SECRET), "").strip()
+    if env_value:
+        return env_value
+
+    file_path = os.getenv(GOOGLE_SERVICE_ACCOUNT_FILE_ENV, "").strip()
+    if file_path:
+        path = Path(file_path)
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+    return ""
 
 
 def current_timestamp() -> str:
@@ -485,29 +517,29 @@ def smtp_configured() -> bool:
         SMTP_USERNAME_SECRET,
         SMTP_PASSWORD_SECRET,
     ]
-    return all(str(st.secrets.get(key, "")).strip() for key in required)
+    return all(str(get_secret_value(key, "")).strip() for key in required)
 
 
 def smtp_port() -> int:
     try:
-        return int(st.secrets.get(SMTP_PORT_SECRET, 587))
+        return int(get_secret_value(SMTP_PORT_SECRET, 587))
     except (TypeError, ValueError):
         return 587
 
 
 def smtp_from_email() -> str:
-    value = str(st.secrets.get(SMTP_FROM_EMAIL_SECRET, "")).strip()
-    return value or str(st.secrets.get(SMTP_USERNAME_SECRET, "")).strip() or CONTACT_EMAIL
+    value = str(get_secret_value(SMTP_FROM_EMAIL_SECRET, "")).strip()
+    return value or str(get_secret_value(SMTP_USERNAME_SECRET, "")).strip() or CONTACT_EMAIL
 
 
 def smtp_from_name() -> str:
-    value = str(st.secrets.get(SMTP_FROM_NAME_SECRET, "")).strip()
+    value = str(get_secret_value(SMTP_FROM_NAME_SECRET, "")).strip()
     return value or "Matrika Academy"
 
 
 def smtp_password() -> str:
-    password = str(st.secrets.get(SMTP_PASSWORD_SECRET, "")).strip()
-    host = str(st.secrets.get(SMTP_HOST_SECRET, "")).strip().lower()
+    password = str(get_secret_value(SMTP_PASSWORD_SECRET, "")).strip()
+    host = str(get_secret_value(SMTP_HOST_SECRET, "")).strip().lower()
     if "gmail.com" in host:
         return password.replace(" ", "")
     return password
@@ -549,8 +581,8 @@ def send_confirmation_email(
     message["Reply-To"] = CONTACT_EMAIL
     message.set_content("\n".join(body_lines))
 
-    host = str(st.secrets.get(SMTP_HOST_SECRET, "")).strip()
-    username = str(st.secrets.get(SMTP_USERNAME_SECRET, "")).strip()
+    host = str(get_secret_value(SMTP_HOST_SECRET, "")).strip()
+    username = str(get_secret_value(SMTP_USERNAME_SECRET, "")).strip()
     password = smtp_password()
     port = smtp_port()
 
@@ -605,8 +637,8 @@ def get_google_spreadsheet():
     except ImportError:
         return None
 
-    raw_secret = st.secrets.get(GOOGLE_SERVICE_ACCOUNT_SECRET, "")
-    sheet_id = st.secrets.get(GOOGLE_SHEET_ID_SECRET, "")
+    raw_secret = get_google_service_account_secret()
+    sheet_id = get_secret_value(GOOGLE_SHEET_ID_SECRET, "")
     if not raw_secret or not sheet_id:
         return None
 
@@ -772,7 +804,7 @@ def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
 
 
 def admin_password_configured() -> bool:
-    return bool(str(st.secrets.get(ADMIN_PASSWORD_SECRET, "")).strip())
+    return bool(str(get_secret_value(ADMIN_PASSWORD_SECRET, "")).strip())
 
 
 def admin_authenticated() -> bool:
@@ -826,23 +858,23 @@ def storage_status_lines() -> list[str]:
     else:
         lines.append("Google Sheets persistence is not configured yet.")
         lines.append(
-            f"Add `{GOOGLE_SHEET_ID_SECRET}` and `{GOOGLE_SERVICE_ACCOUNT_SECRET}` in Streamlit secrets."
+            f"Add `{GOOGLE_SHEET_ID_SECRET}` and `{GOOGLE_SERVICE_ACCOUNT_SECRET}` in Streamlit secrets or host env vars."
         )
     if admin_password_configured():
         lines.append("Admin password is configured.")
     else:
-        lines.append(f"Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets to protect the admin page.")
+        lines.append(f"Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets or host env vars to protect the admin page.")
     if smtp_configured():
         lines.append("Email confirmations are configured.")
     else:
         lines.append(
-            f"Add `{SMTP_HOST_SECRET}`, `{SMTP_PORT_SECRET}`, `{SMTP_USERNAME_SECRET}`, and `{SMTP_PASSWORD_SECRET}` to send confirmations."
+            f"Add `{SMTP_HOST_SECRET}`, `{SMTP_PORT_SECRET}`, `{SMTP_USERNAME_SECRET}`, and `{SMTP_PASSWORD_SECRET}` in secrets or env vars to send confirmations."
         )
     return lines
 
 
 def google_sheet_url() -> str | None:
-    sheet_id = str(st.secrets.get(GOOGLE_SHEET_ID_SECRET, "")).strip()
+    sheet_id = str(get_secret_value(GOOGLE_SHEET_ID_SECRET, "")).strip()
     if not sheet_id:
         return None
     return f"https://docs.google.com/spreadsheets/d/{sheet_id}"
@@ -2662,15 +2694,15 @@ def admin_page() -> None:
         )
         if not admin_password_configured():
             st.warning(
-                f"The admin page is not fully protected yet. Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets."
+                f"The admin page is not fully protected yet. Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets or host env vars."
             )
         with st.form("admin_login_form"):
             password = st.text_input("Admin password", type="password")
             submit = st.form_submit_button("Unlock admin")
             if submit:
-                expected = str(st.secrets.get(ADMIN_PASSWORD_SECRET, "")).strip()
+                expected = str(get_secret_value(ADMIN_PASSWORD_SECRET, "")).strip()
                 if not expected:
-                    st.error("Admin password is not configured in Streamlit secrets yet.")
+                    st.error("Admin password is not configured in secrets or environment variables yet.")
                 elif password == expected:
                     st.session_state.admin_authenticated = True
                     st.rerun()

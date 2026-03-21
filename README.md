@@ -8,7 +8,7 @@ What it includes
 - Google Sheets persistence for cloud deployments, with local CSV fallback for development
 - Admin page for reviewing saved entries after password unlock
 - Live Studio page for links, replays, and attendance tracking
-- Optional logo support via `assets/matrika_logo.png`
+- Optional logo support via `assets/matrika_logo.svg`
 
 Run it
 ```bash
@@ -20,6 +20,22 @@ streamlit run app.py
 ```
 
 Data from the forms is written into `submissions/` locally. On Streamlit Community Cloud, add Google Sheets secrets so submissions persist across restarts.
+
+Deploy to Render
+1. Create a new Render Blueprint or Web Service from this repo.
+2. Render can read the placeholders in `render.yaml` automatically.
+3. Add these environment variables in Render:
+   - `GOOGLE_SHEET_ID`
+   - `GOOGLE_SERVICE_ACCOUNT_JSON`
+   - `ADMIN_PASSWORD`
+   - `SMTP_HOST`
+   - `SMTP_PORT`
+   - `SMTP_USERNAME`
+   - `SMTP_PASSWORD`
+   - `SMTP_FROM_EMAIL`
+   - `SMTP_FROM_NAME`
+4. After the first deploy, add your custom domain in Render and point your registrar DNS records to the values Render shows.
+5. Redirect your secondary domain to the primary domain after HTTPS is active.
 
 Deploy to Streamlit Community Cloud
 1. Push this folder to a GitHub repository.
