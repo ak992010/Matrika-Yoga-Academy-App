@@ -5,6 +5,7 @@ What it includes
 - A new visual system with a warm academy-style layout
 - Sidebar navigation with quick actions
 - Forms for admissions, attendance, payments, kids enquiries, certification, and contact
+- Razorpay payment-link checkout inside the payments page, with manual UPI fallback
 - Google Sheets persistence for cloud deployments, with local CSV fallback for development
 - Admin page for reviewing saved entries after password unlock
 - Live Studio page for links, replays, and attendance tracking
@@ -34,6 +35,8 @@ Deploy to Render
    - `SMTP_PASSWORD`
    - `SMTP_FROM_EMAIL`
    - `SMTP_FROM_NAME`
+   - `RAZORPAY_KEY_ID`
+   - `RAZORPAY_KEY_SECRET`
 4. After the first deploy, add your custom domain in Render and point your registrar DNS records to the values Render shows.
 5. Redirect your secondary domain to the primary domain after HTTPS is active.
 
@@ -50,6 +53,8 @@ smtp_username = "your-email@gmail.com"
 smtp_password = "your-app-password"
 smtp_from_email = "your-email@gmail.com"
 smtp_from_name = "Matrika Academy"
+razorpay_key_id = "rzp_live_your_key_id"
+razorpay_key_secret = "your-razorpay-key-secret"
 
 [google_service_account_json]
 type = "service_account"
@@ -70,6 +75,7 @@ client_x509_cert_url = "https://www.googleapis.com/robot/v1/metadata/x509/servic
 5. Redeploy the app. The sidebar will show whether persistent Google Sheets storage is active.
 6. Open the `Admin` page in the app and unlock it with `admin_password` to review submissions.
 7. Add the SMTP secrets if you want automatic confirmation emails to be sent after form submissions.
+8. Add the Razorpay secrets if you want the payment page to generate hosted Razorpay checkout links.
 
 Google Sheets setup checklist
 1. Create a Google Sheet that will hold the form data.
@@ -89,3 +95,9 @@ Confirmation emails
 - Every form with an email field can send a confirmation email to the same address after submission.
 - For Gmail, use `smtp.gmail.com` with port `587` and a Gmail app password.
 - If SMTP secrets are missing, submissions still save normally and the app shows a setup hint instead of failing.
+
+Razorpay checkout
+- The payments page can generate hosted Razorpay Payment Links for the signed-in learner account.
+- Add `razorpay_key_id` and `razorpay_key_secret` in Streamlit secrets or host environment variables.
+- The app stores each generated payment link in the `razorpay_links` worksheet / `razorpay_links.csv` so the team can track status in admin.
+- Learners can still use the older direct UPI and manual payment-proof path as a fallback.

@@ -17,7 +17,9 @@ from collections.abc import Mapping
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote
+from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -38,6 +40,7 @@ CONTACT_EMAIL = "drpeddamandadi@gmail.com"
 HOME_HREF = "/"
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://matrikayogaacademy.com").rstrip("/")
 PUBLIC_SITE_HOST = re.sub(r"^https?://", "", PUBLIC_SITE_URL).rstrip("/")
+RAZORPAY_API_BASE_URL = "https://api.razorpay.com"
 GOOGLE_SHEETS_SCOPE = ("https://www.googleapis.com/auth/spreadsheets",)
 GOOGLE_SERVICE_ACCOUNT_SECRET = "google_service_account_json"
 GOOGLE_SHEET_ID_SECRET = "google_sheet_id"
@@ -57,10 +60,16 @@ LEARNER_PASSWORD_MIN_LENGTH = 8
 USER_ACCOUNTS_CSV = "user_accounts.csv"
 AUTOMATED_REPLY_LOG_CSV = "reply_automation_logs.csv"
 PASSWORD_RESET_REQUESTS_CSV = "password_reset_requests.csv"
+RAZORPAY_LINKS_CSV = "razorpay_links.csv"
 PAGE_WIDGET_KEY = "page_selector"
 _ENSURED_WORKSHEETS: set[str] = set()
 PASSWORD_RESET_CODE_LENGTH = 6
 PASSWORD_RESET_TTL_MINUTES = 15
+RAZORPAY_KEY_ID_SECRET = "razorpay_key_id"
+RAZORPAY_KEY_SECRET_SECRET = "razorpay_key_secret"
+RAZORPAY_CURRENCY = "INR"
+RAZORPAY_PROVIDER_NAME = "Razorpay"
+RAZORPAY_LINK_TTL_HOURS = 24
 
 SUBMISSION_SCHEMAS = {
     "bookings.csv": {
@@ -212,6 +221,32 @@ SUBMISSION_SCHEMAS = {
             "detail",
         ],
     },
+    RAZORPAY_LINKS_CSV: {
+        "worksheet": "razorpay_links",
+        "label": "Razorpay payment links",
+        "headers": [
+            "created_at",
+            "updated_at",
+            "page",
+            "account_name",
+            "account_email",
+            "name",
+            "email",
+            "phone",
+            "time_period",
+            "plan",
+            "amount",
+            "currency",
+            "provider_hint",
+            "reference_id",
+            "link_id",
+            "status",
+            "short_url",
+            "callback_url",
+            "payment_id",
+            "notes",
+        ],
+    },
 }
 
 PAGE_NAMES = [
@@ -245,6 +280,7 @@ PAYMENT_APP_OPTIONS = [
     "Amazon Pay",
     "Other UPI app",
 ]
+PAYMENT_PROVIDER_OPTIONS = [RAZORPAY_PROVIDER_NAME] + PAYMENT_APP_OPTIONS
 
 HOME_STATS = [
     {
@@ -547,30 +583,35 @@ PAYMENT_PLANS = [
         "kicker": "Entry plan",
         "title": "Garbhasanskara (4 weeks)",
         "body": "Gentle live support for pregnant learners with replay access.",
+        "amount_inr": 4200,
         "meta": ["INR 4,200", "4 weeks", "Replay included"],
     },
     {
         "kicker": "Monthly",
         "title": "Trimester Flow",
         "body": "A monthly rhythm for comfort, mobility, and steady practice.",
+        "amount_inr": 3500,
         "meta": ["INR 3,500", "Monthly", "Live sessions"],
     },
     {
         "kicker": "Bundle",
         "title": "Prenatal / Postnatal",
         "body": "Eight guided sessions with practical recovery support.",
+        "amount_inr": 3200,
         "meta": ["INR 3,200", "8 sessions", "Small batch"],
     },
     {
         "kicker": "Kids",
         "title": "Kids Yoga",
         "body": "Playful classes designed for focus, balance, and calm.",
+        "amount_inr": 2800,
         "meta": ["INR 2,800", "Monthly", "Ages 5-14"],
     },
     {
         "kicker": "Professional",
         "title": "Teacher Certification",
         "body": "A full pathway with theory, practicum, and mentored feedback.",
+        "amount_inr": 24000,
         "meta": ["INR 24,000", "Certification", "Mentorship"],
     },
 ]
@@ -766,6 +807,263 @@ def payment_app_link(app_name: str, learner: Mapping[str, object] | None = None)
     learner = learner or {}
     note = normalize_text(str(learner.get("full_name", "")) or "Matrika learner")
     return f"{PAYMENT_UPI_URL}&tn={quote(f'{app_name} payment for {note}')}"
+
+
+def payment_plan_by_title(title: str) -> dict[str, object]:
+    for item in PAYMENT_PLANS:
+        if str(item.get("title", "")) == str(title):
+            return dict(item)
+    return {}
+
+
+def payment_plan_amount(title: str) -> int:
+    plan = payment_plan_by_title(title)
+    amount = plan.get("amount_inr", 0)
+    try:
+        return max(int(amount), 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def razorpay_configured() -> bool:
+    return bool(str(get_secret_value(RAZORPAY_KEY_ID_SECRET, "")).strip()) and bool(
+        str(get_secret_value(RAZORPAY_KEY_SECRET_SECRET, "")).strip()
+    )
+
+
+def razorpay_amount_subunits(amount_inr: int | float) -> int:
+    try:
+        return max(int(round(float(amount_inr) * 100)), 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def razorpay_reference_id(plan: str, email: str) -> str:
+    plan_token = re.sub(r"[^a-z0-9]+", "", str(plan).lower())[:8] or "plan"
+    user_token = re.sub(r"[^a-z0-9]+", "", normalize_email(email).split("@")[0])[:8] or "learner"
+    unique_token = secrets.token_hex(2)
+    return f"ma-{plan_token}-{user_token}-{unique_token}"[:40]
+
+
+def razorpay_callback_url() -> str:
+    return PUBLIC_SITE_URL
+
+
+def razorpay_notes_payload(
+    *,
+    plan: str,
+    time_period: str,
+    account_email: str,
+    provider_hint: str,
+) -> dict[str, str]:
+    def trimmed(value: object) -> str:
+        return normalize_text(str(value))[:250]
+
+    return {
+        "plan": trimmed(plan),
+        "time_period": trimmed(time_period),
+        "account_email": trimmed(account_email),
+        "provider_hint": trimmed(provider_hint),
+    }
+
+
+def razorpay_request(method: str, endpoint: str, payload: Mapping[str, object] | None = None) -> tuple[bool, dict[str, object] | None, str]:
+    key_id = str(get_secret_value(RAZORPAY_KEY_ID_SECRET, "")).strip()
+    key_secret = str(get_secret_value(RAZORPAY_KEY_SECRET_SECRET, "")).strip()
+    if not key_id or not key_secret:
+        return False, None, "Razorpay is not configured yet."
+
+    request_headers = {
+        "Authorization": "Basic "
+        + base64.b64encode(f"{key_id}:{key_secret}".encode("utf-8")).decode("utf-8"),
+        "Accept": "application/json",
+    }
+    body = None
+    if payload is not None:
+        request_headers["Content-Type"] = "application/json"
+        body = json.dumps(payload).encode("utf-8")
+
+    request = Request(
+        f"{RAZORPAY_API_BASE_URL}{endpoint}",
+        data=body,
+        headers=request_headers,
+        method=method.upper(),
+    )
+    try:
+        with urlopen(request, timeout=20) as response:
+            raw = response.read().decode("utf-8")
+    except HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        try:
+            data = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            data = {}
+        error_block = data.get("error", {}) if isinstance(data, Mapping) else {}
+        detail = ""
+        if isinstance(error_block, Mapping):
+            detail = str(error_block.get("description") or error_block.get("reason") or "").strip()
+        message = detail or raw or f"Razorpay request failed with status {exc.code}."
+        return False, data if isinstance(data, dict) else None, message
+    except URLError as exc:
+        return False, None, f"Razorpay could not be reached: {exc.reason}"
+    except Exception as exc:
+        return False, None, f"Razorpay request could not be completed: {exc}"
+
+    try:
+        data = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        return False, None, "Razorpay returned an unreadable response."
+    if not isinstance(data, dict):
+        return False, None, "Razorpay returned an unexpected response."
+    return True, data, ""
+
+
+def create_razorpay_payment_link(
+    *,
+    learner: Mapping[str, object],
+    name: str,
+    email: str,
+    phone: str,
+    plan: str,
+    time_period: str,
+    amount_inr: int,
+    provider_hint: str,
+    notes: str,
+) -> tuple[bool, dict[str, str] | None, str]:
+    clean_name = normalize_text(name)
+    clean_email = normalize_email(email)
+    clean_phone = digits_only(phone)
+    clean_notes = normalize_text(notes)
+    amount = razorpay_amount_subunits(amount_inr)
+    if amount <= 0:
+        return False, None, "Enter a valid payment amount before creating the Razorpay link."
+
+    reference_id = razorpay_reference_id(plan, clean_email)
+    customer = {
+        "name": clean_name,
+        "email": clean_email,
+    }
+    if clean_phone:
+        customer["contact"] = clean_phone
+
+    payload = {
+        "amount": amount,
+        "currency": RAZORPAY_CURRENCY,
+        "description": f"{plan} · {time_period} · Matrika Academy",
+        "reference_id": reference_id,
+        "customer": customer,
+        "reminder_enable": True,
+        "callback_url": razorpay_callback_url(),
+        "callback_method": "get",
+        "notes": razorpay_notes_payload(
+            plan=plan,
+            time_period=time_period,
+            account_email=clean_email,
+            provider_hint=provider_hint,
+        ),
+    }
+    if clean_notes:
+        payload["notes"]["academy_note"] = clean_notes[:250]
+
+    ok, response, detail = razorpay_request("POST", "/v1/payment_links", payload)
+    if not ok or not response:
+        return False, None, detail or "Razorpay could not create the payment link."
+
+    row = {
+        "created_at": current_timestamp(),
+        "updated_at": current_timestamp(),
+        "page": "Payments",
+        "account_name": str(learner.get("full_name", "")).strip(),
+        "account_email": str(learner.get("email", "")).strip(),
+        "name": clean_name,
+        "email": clean_email,
+        "phone": normalize_phone(clean_phone),
+        "time_period": time_period,
+        "plan": plan,
+        "amount": str(amount_inr),
+        "currency": str(response.get("currency") or RAZORPAY_CURRENCY),
+        "provider_hint": provider_hint,
+        "reference_id": str(response.get("reference_id") or reference_id),
+        "link_id": str(response.get("id", "")),
+        "status": str(response.get("status", "created")),
+        "short_url": str(response.get("short_url", "")),
+        "callback_url": razorpay_callback_url(),
+        "payment_id": "",
+        "notes": clean_notes,
+    }
+    upsert_submission_row(RAZORPAY_LINKS_CSV, row, ("link_id", "reference_id"))
+    return True, row, ""
+
+
+def fetch_razorpay_payment_link(link_id: str) -> tuple[bool, dict[str, object] | None, str]:
+    clean_link_id = normalize_text(link_id)
+    if not clean_link_id:
+        return False, None, "A Razorpay link id is required to refresh status."
+    return razorpay_request("GET", f"/v1/payment_links/{quote(clean_link_id)}")
+
+
+def first_razorpay_payment_id(response: Mapping[str, object]) -> str:
+    payments = response.get("payments", [])
+    if not isinstance(payments, list) or not payments:
+        return ""
+    first = payments[0]
+    if not isinstance(first, Mapping):
+        return ""
+    return str(first.get("payment_id") or first.get("id") or "").strip()
+
+
+def upsert_submission_row(csv_name: str, row: dict[str, object], key_fields: tuple[str, ...]) -> None:
+    rows = load_submission_rows(csv_name)
+    normalized_row = {str(key): str(value) for key, value in row.items()}
+    updated = False
+    for existing in rows:
+        if any(normalized_row.get(key, "") and str(existing.get(key, "")) == normalized_row.get(key, "") for key in key_fields):
+            existing.update(normalized_row)
+            updated = True
+            break
+    if not updated:
+        rows.append(normalized_row)
+    replace_rows(csv_name, rows)
+
+
+def latest_razorpay_link(email: str) -> dict[str, str] | None:
+    target = normalize_email(email)
+    for row in reversed(load_submission_rows(RAZORPAY_LINKS_CSV)):
+        if normalize_email(row.get("account_email", "") or row.get("email", "")) == target:
+            return row
+    return None
+
+
+def refresh_razorpay_link_status(link_row: Mapping[str, object]) -> tuple[bool, dict[str, str] | None, str]:
+    link_id = str(link_row.get("link_id", "")).strip()
+    ok, response, detail = fetch_razorpay_payment_link(link_id)
+    if not ok or not response:
+        return False, None, detail or "Razorpay status could not be refreshed."
+
+    updated_row = {
+        "created_at": str(link_row.get("created_at", current_timestamp())),
+        "updated_at": current_timestamp(),
+        "page": str(link_row.get("page", "Payments")),
+        "account_name": str(link_row.get("account_name", "")),
+        "account_email": str(link_row.get("account_email", "")),
+        "name": str(link_row.get("name", "")),
+        "email": str(link_row.get("email", "")),
+        "phone": str(link_row.get("phone", "")),
+        "time_period": str(link_row.get("time_period", "")),
+        "plan": str(link_row.get("plan", "")),
+        "amount": str(link_row.get("amount", "")),
+        "currency": str(response.get("currency") or link_row.get("currency", RAZORPAY_CURRENCY)),
+        "provider_hint": str(link_row.get("provider_hint", "")),
+        "reference_id": str(response.get("reference_id") or link_row.get("reference_id", "")),
+        "link_id": str(response.get("id") or link_id),
+        "status": str(response.get("status") or link_row.get("status", "")),
+        "short_url": str(response.get("short_url") or link_row.get("short_url", "")),
+        "callback_url": str(response.get("callback_url") or link_row.get("callback_url", razorpay_callback_url())),
+        "payment_id": first_razorpay_payment_id(response) or str(link_row.get("payment_id", "")),
+        "notes": str(link_row.get("notes", "")),
+    }
+    upsert_submission_row(RAZORPAY_LINKS_CSV, updated_row, ("link_id", "reference_id"))
+    return True, updated_row, ""
 
 
 def render_support_actions(subject: str, message: str, *, include_call: bool = True) -> None:
@@ -1288,6 +1586,12 @@ def storage_status_lines() -> list[str]:
         lines.append(
             f"Add `{SMTP_HOST_SECRET}`, `{SMTP_PORT_SECRET}`, `{SMTP_USERNAME_SECRET}`, and `{SMTP_PASSWORD_SECRET}` in secrets or env vars to send automatic replies and password reset codes."
         )
+    if razorpay_configured():
+        lines.append("Razorpay payment links are configured.")
+    else:
+        lines.append(
+            f"Add `{RAZORPAY_KEY_ID_SECRET}` and `{RAZORPAY_KEY_SECRET_SECRET}` in secrets or env vars to generate Razorpay payment links."
+        )
     lines.append("Learner accounts are stored with hashed passwords.")
     return lines
 
@@ -1399,6 +1703,7 @@ def sync_learner_session(account: Mapping[str, object]) -> None:
     st.session_state.learner_payment_app = str(account.get("linked_payment_app", "")).strip()
     st.session_state.learner_payment_handle = normalize_payment_handle(str(account.get("linked_payment_handle", "")))
     st.session_state.learner_payment_notes = str(account.get("linked_payment_notes", "")).strip()
+    st.session_state.latest_razorpay_link = latest_razorpay_link(str(account.get("email", ""))) or {}
 
 
 def logout_learner() -> None:
@@ -1409,6 +1714,7 @@ def logout_learner() -> None:
     st.session_state.learner_payment_app = ""
     st.session_state.learner_payment_handle = ""
     st.session_state.learner_payment_notes = ""
+    st.session_state.latest_razorpay_link = {}
 
 
 def remember_recent_account_creation(email: str) -> None:
@@ -4390,10 +4696,136 @@ def payments_page() -> None:
 
     linked_app = preferred_payment_app(learner)
     linked_handle = preferred_payment_handle(learner)
-    provider_options = [linked_app] + [option for option in PAYMENT_APP_OPTIONS if option != linked_app] if linked_app else PAYMENT_APP_OPTIONS
+    provider_options = (
+        [linked_app] + [option for option in PAYMENT_PROVIDER_OPTIONS if option != linked_app]
+        if linked_app
+        else PAYMENT_PROVIDER_OPTIONS
+    )
+    latest_link = st.session_state.get("latest_razorpay_link") or latest_razorpay_link(learner.get("email", ""))
 
     left, right = st.columns([1.15, 0.85])
     with left:
+        render_form_banner(
+            "&#8377;",
+            "Secure Razorpay checkout",
+            "Create a live Razorpay payment link for the selected plan so learners can pay on a hosted checkout page instead of copying details manually.",
+        )
+        if razorpay_configured():
+            plan_titles = [item["title"] for item in PAYMENT_PLANS]
+            default_plan = plan_titles[0]
+            with st.form("razorpay_payment_link_form"):
+                checkout_name = st.text_input("Learner name", value=learner.get("full_name", ""))
+                checkout_email = st.text_input("Learner email", value=learner.get("email", ""), disabled=True)
+                checkout_phone = st.text_input("Phone", value=learner.get("phone", ""))
+                checkout_time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS, key="razorpay_time_period")
+                checkout_plan = st.selectbox("Plan", plan_titles, key="razorpay_plan")
+                suggested_amount = payment_plan_amount(checkout_plan or default_plan) or 500
+                checkout_amount = st.number_input(
+                    "Amount to collect (INR)",
+                    min_value=500,
+                    max_value=100000,
+                    value=suggested_amount,
+                    step=100,
+                    help="The amount is prefilled from the selected plan. Adjust it only if you are applying a scholarship, coupon, or a custom academy amount.",
+                )
+                checkout_provider_hint = st.selectbox(
+                    "Preferred payment app",
+                    provider_options,
+                    help="This helps the academy remember whether the learner usually pays from Google Pay, PhonePe, Paytm, Razorpay, or another app.",
+                )
+                checkout_notes = st.text_area("Notes for the payment link", help="Optional batch, coupon, or billing note.")
+                create_link = st.form_submit_button("Create secure Razorpay link")
+
+                if create_link:
+                    clean_name = normalize_text(checkout_name)
+                    clean_email = normalize_email(learner.get("email", "") or checkout_email)
+                    clean_phone = normalize_phone(checkout_phone)
+                    clean_notes = normalize_text(checkout_notes)
+
+                    if not clean_name or not clean_email:
+                        st.error("Learner name and learner email are required.")
+                    elif not valid_email(clean_email):
+                        st.error("Enter a valid learner email before creating the Razorpay link.")
+                    elif clean_phone and not valid_phone(clean_phone):
+                        st.error("Enter a valid 10-digit Indian phone number or leave the phone field blank.")
+                    else:
+                        created, link_row, detail = create_razorpay_payment_link(
+                            learner=learner,
+                            name=clean_name,
+                            email=clean_email,
+                            phone=clean_phone,
+                            plan=checkout_plan,
+                            time_period=checkout_time_period,
+                            amount_inr=int(checkout_amount),
+                            provider_hint=checkout_provider_hint,
+                            notes=clean_notes,
+                        )
+                        if not created or not link_row:
+                            st.error(detail or "Razorpay could not create the payment link.")
+                        else:
+                            st.session_state.latest_razorpay_link = link_row
+                            latest_link = link_row
+                            email_result = send_automatic_reply(
+                                trigger="razorpay_payment_link",
+                                page="Payments",
+                                to_email=clean_email,
+                                recipient_name=clean_name,
+                                subject="Matrika Academy Razorpay payment link",
+                                submission_title="Razorpay payment link",
+                                details=[
+                                    ("Submitted at", link_row["created_at"]),
+                                    ("Plan", checkout_plan),
+                                    ("Time period", checkout_time_period),
+                                    ("Amount", f"INR {int(checkout_amount)}"),
+                                    ("Provider hint", checkout_provider_hint),
+                                    ("Razorpay link", link_row.get("short_url", "")),
+                                    ("Reference", link_row.get("reference_id", "")),
+                                ],
+                                next_steps="Open the Razorpay link, complete the payment on the hosted checkout page, and then return to this payment page if you want to add a note or share proof manually as well.",
+                                account_email=learner.get("email", ""),
+                                intro_text="We created a secure Razorpay checkout link for your Matrika Academy payment request.",
+                            )
+                            st.success("Razorpay link created. Open the secure checkout below.")
+                            render_confirmation_result(email_result)
+        else:
+            render_card(
+                "Razorpay is not connected yet",
+                "Add Razorpay live keys in secrets or Render environment variables to generate hosted payment links from this page. Until then, the manual UPI and payment-proof flow still works.",
+                kicker="Setup needed",
+                meta=[RAZORPAY_KEY_ID_SECRET, RAZORPAY_KEY_SECRET_SECRET, "Hosted checkout"],
+                class_name="info-card",
+            )
+        if latest_link:
+            latest_status = str(latest_link.get("status", "created")).replace("_", " ").title()
+            render_card(
+                "Latest secure checkout",
+                str(latest_link.get("short_url", "")) or "A Razorpay link was created for this learner account.",
+                kicker=latest_status,
+                meta=[
+                    str(latest_link.get("plan", "No plan")),
+                    f"INR {latest_link.get('amount', '')}",
+                    str(latest_link.get("reference_id", "")) or "No reference",
+                ],
+                class_name="info-card",
+            )
+            latest_actions = st.columns(2)
+            with latest_actions[0]:
+                if latest_link.get("short_url"):
+                    st.link_button(
+                        "Open secure Razorpay checkout",
+                        str(latest_link.get("short_url", "")),
+                        use_container_width=True,
+                    )
+            with latest_actions[1]:
+                if st.button("Refresh Razorpay status", use_container_width=True):
+                    refreshed, updated_link, detail = refresh_razorpay_link_status(latest_link)
+                    if not refreshed or not updated_link:
+                        st.warning(detail or "Razorpay status could not be refreshed.")
+                    else:
+                        st.session_state.latest_razorpay_link = updated_link
+                        st.success(f"Razorpay link status is now {updated_link.get('status', 'created')}.")
+                        st.rerun()
+        st.divider()
         payment_actions = st.columns(2)
         with payment_actions[0]:
             st.link_button(
@@ -4412,9 +4844,9 @@ def payments_page() -> None:
         st.code(PAYMENT_UPI_ID)
         st.caption("If the UPI button does not open on desktop, pay to this UPI ID inside your UPI app.")
         render_section(
-            "Third-party payment apps",
-            "Choose the app you want to pay from.",
-            "These shortcuts all open the same Matrika UPI destination while keeping your preferred app front and center.",
+            "Manual payment fallback",
+            "Choose the app you want to pay from if you are not using the secure Razorpay checkout above.",
+            "These shortcuts keep the older UPI path available for learners who prefer a direct app-to-app flow.",
         )
         app_buttons = st.columns(2)
         for index, app_name in enumerate(PAYMENT_APP_OPTIONS[:4]):
@@ -4435,6 +4867,15 @@ def payments_page() -> None:
             class_name="info-card",
         )
         st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
+        if razorpay_configured():
+            render_card(
+                "Why Razorpay here?",
+                "The hosted checkout keeps the payment step cleaner on mobile and desktop, while the academy still keeps your learner account, plan, and follow-up context connected.",
+                kicker="Recommended",
+                meta=["Hosted checkout", "Cards + UPI + netbanking", "Learner linked"],
+                class_name="info-card",
+            )
+            st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
         if linked_app:
             render_card(
                 linked_app,
@@ -4467,8 +4908,14 @@ def payments_page() -> None:
         email = st.text_input("Email", value=learner.get("email", ""), disabled=True)
         time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
         plan = st.selectbox("Plan", [item["title"] for item in PAYMENT_PLANS])
-        amount = st.number_input("Amount paid (INR)", min_value=500, max_value=100000, step=100)
-        method = st.selectbox("Method", ["UPI", "Card", "NetBanking", "Wallet"])
+        amount = st.number_input(
+            "Amount paid (INR)",
+            min_value=500,
+            max_value=100000,
+            value=payment_plan_amount(plan) or 500,
+            step=100,
+        )
+        method = st.selectbox("Method", ["Razorpay", "UPI", "Card", "NetBanking", "Wallet"])
         provider = st.selectbox("Payment app / provider", provider_options)
         payer_handle = st.text_input(
             "Your payer handle",
@@ -4490,7 +4937,7 @@ def payments_page() -> None:
                 st.error("Name, email, and payment reference are required.")
             elif not valid_email(clean_email):
                 st.error("Enter a valid email address.")
-            elif method in {"UPI", "Wallet"} and not clean_payer_handle:
+            elif method in {"UPI", "Wallet"} and provider != RAZORPAY_PROVIDER_NAME and not clean_payer_handle:
                 st.error("Add the payer handle or app account you used for this payment.")
             else:
                 row = {
@@ -4780,6 +5227,7 @@ def initialize_state() -> None:
     st.session_state.setdefault("learner_email", "")
     st.session_state.setdefault("learner_phone", "")
     st.session_state.setdefault("sheets_initialized", False)
+    st.session_state.setdefault("latest_razorpay_link", {})
     if st.session_state.page not in PAGE_NAMES:
         st.session_state.page = PAGE_NAMES[0]
     if st.session_state.page in NAV_PAGE_NAMES:
