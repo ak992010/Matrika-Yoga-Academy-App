@@ -32,6 +32,8 @@ PAYMENT_UPI_URL = f"upi://pay?pa={PAYMENT_UPI_ID}&pn=Matrika%20Academy&cu=INR"
 CONTACT_PHONE = "7893939545"
 CONTACT_EMAIL = "drpeddamandadi@gmail.com"
 HOME_HREF = "/"
+PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://matrikayogaacademy.com").rstrip("/")
+PUBLIC_SITE_HOST = re.sub(r"^https?://", "", PUBLIC_SITE_URL).rstrip("/")
 GOOGLE_SHEETS_SCOPE = ("https://www.googleapis.com/auth/spreadsheets",)
 GOOGLE_SERVICE_ACCOUNT_SECRET = "google_service_account_json"
 GOOGLE_SHEET_ID_SECRET = "google_sheet_id"
@@ -118,6 +120,7 @@ PAGE_NAMES = [
     "Contact",
     "Admin",
 ]
+NAV_PAGE_NAMES = [page for page in PAGE_NAMES if page != "Admin"]
 
 TIME_PERIOD_OPTIONS = [
     "Morning",
@@ -201,6 +204,69 @@ FEATURE_CARDS = [
         "title": "Mentored teacher journey",
         "body": "Future teachers get feedback, practicum blocks, and clear completion milestones.",
         "meta": ["Teaching circles", "Specialization"],
+    },
+]
+
+PUBLIC_RELEASE_CARDS = [
+    {
+        "kicker": "Public site",
+        "title": PUBLIC_SITE_HOST,
+        "body": "Share one simple link with families, learners, and teachers so they can reach the academy without confusion.",
+        "meta": ["Live now", "Mobile friendly", "Public access"],
+    },
+    {
+        "kicker": "Support rhythm",
+        "title": "Friendly follow-through",
+        "body": "Each form creates a clear next step, and the team can answer through WhatsApp, email, or class follow-up.",
+        "meta": ["Phone", "Email", "WhatsApp"],
+    },
+    {
+        "kicker": "Learning mode",
+        "title": "Live + replay structure",
+        "body": "The experience works for busy families because it supports both real-time joining and calm catch-up later.",
+        "meta": ["Zoom", "Replay path", "IST timing"],
+    },
+]
+
+OUTCOME_CARDS = [
+    {
+        "kicker": "Parents",
+        "title": "A clear path from enquiry to class",
+        "body": "The app keeps admissions, time period choices, and support actions in one calm flow.",
+        "meta": ["Less confusion", "Fast action"],
+    },
+    {
+        "kicker": "Children",
+        "title": "Playful structure without overload",
+        "body": "Kids yoga enquiries feel light, guided, and parent-friendly instead of buried inside long forms.",
+        "meta": ["Age-aware", "Easy follow-up"],
+    },
+    {
+        "kicker": "Teachers",
+        "title": "A stronger certification journey",
+        "body": "Future teachers can move from interest to application with a clearer view of practice, mentorship, and timing.",
+        "meta": ["Mentoring", "Cohort-ready"],
+    },
+]
+
+FAQ_CARDS = [
+    {
+        "kicker": "FAQ",
+        "title": "Can learners join from another city or device?",
+        "body": "Yes. The academy runs online, so students can open the public site, join live sessions, and stay connected from anywhere.",
+        "meta": ["Online-first", "Any device"],
+    },
+    {
+        "kicker": "FAQ",
+        "title": "What happens after a form is submitted?",
+        "body": "The request is saved, a confirmation flow is triggered, and the learner is returned home with the next step clearly stated.",
+        "meta": ["Saved entries", "Clear next step"],
+    },
+    {
+        "kicker": "FAQ",
+        "title": "How does the academy handle timing preferences?",
+        "body": "Every form now includes a time period field so the team can recommend the right batch faster.",
+        "meta": ["Morning", "Evening", "Weekend"],
     },
 ]
 
@@ -1268,6 +1334,11 @@ def apply_theme() -> None:
             transform: translateY(-1px);
         }
 
+        .site-chip {
+            background: linear-gradient(135deg, rgba(200, 111, 139, 0.16), rgba(207, 152, 102, 0.18)) !important;
+            border-color: rgba(200, 111, 139, 0.24) !important;
+        }
+
         .flash-banner {
             margin-bottom: 1rem;
             padding: 1rem 1.1rem;
@@ -1606,6 +1677,21 @@ def apply_theme() -> None:
             box-shadow: 0 14px 28px rgba(63, 42, 51, 0.08);
         }
 
+        .footer-shell {
+            margin-top: 2rem;
+            padding: 1rem 1.15rem;
+            border-radius: 24px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: var(--shadow);
+        }
+
+        .footer-shell p {
+            margin: 0.2rem 0 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
         .stButton > button {
             border-radius: 999px;
             border: 1px solid transparent;
@@ -1784,6 +1870,23 @@ def render_section(eyebrow: str, title: str, body: str) -> None:
     )
 
 
+def render_footer() -> None:
+    st.markdown(
+        f"""
+        <div class="footer-shell">
+            <span class="eyebrow">Public release</span>
+            <h3 style="margin:0.55rem 0 0.2rem;">Matrika Academy is live and share-ready.</h3>
+            <p>
+                Public site: <strong>{esc(PUBLIC_SITE_HOST)}</strong><br/>
+                Support: {esc(CONTACT_EMAIL)} · {esc(CONTACT_PHONE)}<br/>
+                Classes are structured for live joining, replay follow-up, and calm navigation on desktop or mobile.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_flash_notice() -> None:
     notice = st.session_state.pop("flash_notice", None)
     if not notice:
@@ -1826,6 +1929,7 @@ def render_topbar() -> None:
             </a>
             <div class="topbar-actions">
                 <a class="topbar-chip" href="{HOME_HREF}" target="_self">Home</a>
+                <a class="topbar-chip site-chip" href="{esc(PUBLIC_SITE_URL)}" target="_blank" rel="noopener noreferrer">{esc(PUBLIC_SITE_HOST)}</a>
                 <a class="topbar-chip" href="{esc(LIVE_ZOOM_URL)}" target="_blank" rel="noopener noreferrer">Join live</a>
                 <a class="topbar-chip" href="{esc(build_whatsapp_url('Hi Matrika Academy, I need help with classes or admissions.'))}" target="_blank" rel="noopener noreferrer">Support</a>
             </div>
@@ -1861,12 +1965,30 @@ def render_sidebar() -> None:
             unsafe_allow_html=True,
         )
 
-        st.radio(
-            "Navigate",
-            PAGE_NAMES,
-            key="page",
-            label_visibility="collapsed",
-        )
+        if st.session_state.page == "Admin":
+            st.markdown(
+                """
+                <div class="sidebar-card">
+                    <div class="card-kicker">Team admin open</div>
+                    <p class="card-copy">You are in the protected admin area. Use the button below to return to the public academy view.</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.button(
+                "Back to academy",
+                key="sidebar_back_home",
+                use_container_width=True,
+                on_click=jump_to,
+                args=("Dashboard",),
+            )
+        else:
+            st.radio(
+                "Navigate",
+                NAV_PAGE_NAMES,
+                key="page",
+                label_visibility="collapsed",
+            )
 
         st.markdown(
             """
@@ -1941,6 +2063,23 @@ def render_sidebar() -> None:
             unsafe_allow_html=True,
         )
 
+        st.markdown(
+            """
+            <div class="sidebar-card">
+                <div class="card-kicker">Team access</div>
+                <p class="card-copy">Admin tools stay out of the public navigation, but the Matrika team can still unlock them here.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.button(
+            "Open team admin",
+            key="sidebar_admin",
+            use_container_width=True,
+            on_click=jump_to,
+            args=("Admin",),
+        )
+
 
 def dashboard_page() -> None:
     left, right = st.columns([1.35, 0.95])
@@ -2013,6 +2152,36 @@ def dashboard_page() -> None:
     render_metric_grid(HOME_STATS)
 
     render_section(
+        "Public launch",
+        "A cleaner way to share the academy with anyone.",
+        "The academy now has a public-facing flow that feels calmer for first-time visitors and stronger for returning learners.",
+    )
+    launch_cols = st.columns([1.05, 0.95])
+    with launch_cols[0]:
+        render_card(
+            PUBLIC_SITE_HOST,
+            "Use the branded public site link when you want to invite families, students, or teachers into the academy experience.",
+            kicker="Share-ready",
+            meta=["Brand link", "Public", "Mobile"],
+            class_name="feature-card",
+        )
+    with launch_cols[1]:
+        st.link_button("Open public site", PUBLIC_SITE_URL, use_container_width=True)
+        st.link_button(
+            "Share on WhatsApp",
+            build_whatsapp_url(f"Explore Matrika Academy here: {PUBLIC_SITE_URL}"),
+            use_container_width=True,
+        )
+        st.link_button(
+            "Email the academy link",
+            build_mailto_url(
+                "Matrika Academy",
+                f"Hi, you can open Matrika Academy here: {PUBLIC_SITE_URL}",
+            ),
+            use_container_width=True,
+        )
+
+    render_section(
         "Featured tracks",
         "A practical view of the main learning paths offered inside the academy.",
         "Each track is built to feel calm, structured, and easy to join.",
@@ -2027,11 +2196,32 @@ def dashboard_page() -> None:
     render_card_grid(FEATURE_CARDS, columns=3)
 
     render_section(
+        "Public release strengths",
+        "The current version is built to be easier to trust, easier to share, and easier to use from another device.",
+        "These are the parts that make the academy feel more like a real public platform and less like an internal tool.",
+    )
+    render_card_grid(PUBLIC_RELEASE_CARDS, columns=3)
+
+    render_section(
+        "Designed around real users",
+        "Parents, children, and future teachers each need a different kind of clarity.",
+        "The app now gives each group a cleaner entry point into the academy.",
+    )
+    render_card_grid(OUTCOME_CARDS, columns=3)
+
+    render_section(
         "How the journey works",
         "The academy flow is simple enough for first-time learners and structured enough for long-term growth.",
         "Use this as the path from enquiry to ongoing practice.",
     )
     render_steps(ADMISSIONS_STEPS)
+
+    render_section(
+        "Questions people usually ask first",
+        "A few quick answers before someone commits to a class or enquiry.",
+        "This helps first-time visitors feel oriented as soon as they land.",
+    )
+    render_card_grid(FAQ_CARDS, columns=3)
 
 
 def programs_page() -> None:
@@ -2837,6 +3027,7 @@ def main() -> None:
     render_topbar()
     render_flash_notice()
     PAGE_ROUTES[st.session_state.page]()
+    render_footer()
 
 
 if __name__ == "__main__":
