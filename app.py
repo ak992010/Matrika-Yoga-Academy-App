@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import base64
 import csv
+import hashlib
 import html
+import hmac
 import io
 import json
 import os
 import re
+import secrets
 import smtplib
 import ssl
 import time
@@ -49,6 +52,9 @@ SMTP_FROM_EMAIL_SECRET = "smtp_from_email"
 SMTP_FROM_NAME_SECRET = "smtp_from_name"
 GOOGLE_SERVICE_ACCOUNT_FILE_ENV = "GOOGLE_SERVICE_ACCOUNT_FILE"
 PRIMARY_PUBLIC_DOMAIN = "matrikayogaacademy.com"
+LEARNER_PASSWORD_MIN_LENGTH = 8
+USER_ACCOUNTS_CSV = "user_accounts.csv"
+AUTOMATED_REPLY_LOG_CSV = "reply_automation_logs.csv"
 _ENSURED_WORKSHEETS: set[str] = set()
 
 SUBMISSION_SCHEMAS = {
@@ -58,6 +64,8 @@ SUBMISSION_SCHEMAS = {
         "headers": [
             "submitted_at",
             "page",
+            "account_name",
+            "account_email",
             "name",
             "email",
             "phone",
@@ -73,17 +81,47 @@ SUBMISSION_SCHEMAS = {
     "attendance.csv": {
         "worksheet": "attendance",
         "label": "Live attendance",
-        "headers": ["submitted_at", "page", "name", "email", "session", "mode", "time_period"],
+        "headers": [
+            "submitted_at",
+            "page",
+            "account_name",
+            "account_email",
+            "name",
+            "email",
+            "session",
+            "mode",
+            "time_period",
+        ],
     },
     "training_applications.csv": {
         "worksheet": "training_applications",
         "label": "Certification applications",
-        "headers": ["submitted_at", "page", "name", "email", "time_period", "experience", "motivation"],
+        "headers": [
+            "submitted_at",
+            "page",
+            "account_name",
+            "account_email",
+            "name",
+            "email",
+            "time_period",
+            "experience",
+            "motivation",
+        ],
     },
     "kids_enquiries.csv": {
         "worksheet": "kids_enquiries",
         "label": "Kids studio enquiries",
-        "headers": ["submitted_at", "page", "parent", "child", "age", "email", "time_period"],
+        "headers": [
+            "submitted_at",
+            "page",
+            "account_name",
+            "account_email",
+            "parent",
+            "child",
+            "age",
+            "email",
+            "time_period",
+        ],
     },
     "payments.csv": {
         "worksheet": "payments",
@@ -91,6 +129,8 @@ SUBMISSION_SCHEMAS = {
         "headers": [
             "submitted_at",
             "page",
+            "account_name",
+            "account_email",
             "name",
             "email",
             "time_period",
@@ -104,12 +144,52 @@ SUBMISSION_SCHEMAS = {
     "contact_messages.csv": {
         "worksheet": "contact_messages",
         "label": "Contact messages",
-        "headers": ["submitted_at", "page", "name", "email", "time_period", "message"],
+        "headers": [
+            "submitted_at",
+            "page",
+            "account_name",
+            "account_email",
+            "name",
+            "email",
+            "time_period",
+            "message",
+        ],
+    },
+    USER_ACCOUNTS_CSV: {
+        "worksheet": "user_accounts",
+        "label": "Learner accounts",
+        "headers": [
+            "created_at",
+            "updated_at",
+            "full_name",
+            "email",
+            "phone",
+            "password_hash",
+            "password_salt",
+            "status",
+            "last_login_at",
+        ],
+    },
+    AUTOMATED_REPLY_LOG_CSV: {
+        "worksheet": "reply_automation_logs",
+        "label": "Automatic reply logs",
+        "headers": [
+            "sent_at",
+            "page",
+            "trigger",
+            "recipient_name",
+            "email",
+            "account_email",
+            "subject",
+            "status",
+            "detail",
+        ],
     },
 }
 
 PAGE_NAMES = [
     "Dashboard",
+    "Account",
     "Programs",
     "Schedule",
     "Admissions",
@@ -121,6 +201,14 @@ PAGE_NAMES = [
     "Admin",
 ]
 NAV_PAGE_NAMES = [page for page in PAGE_NAMES if page != "Admin"]
+ACCOUNT_REQUIRED_PAGES = {
+    "Admissions",
+    "Live Studio",
+    "Certification",
+    "Kids Studio",
+    "Payments",
+    "Contact",
+}
 
 TIME_PERIOD_OPTIONS = [
     "Morning",
@@ -505,6 +593,30 @@ def valid_phone(value: str) -> bool:
     return len(digits) == 10 or (digits.startswith("91") and len(digits) == 12)
 
 
+def valid_password(value: str) -> bool:
+    return len(str(value)) >= LEARNER_PASSWORD_MIN_LENGTH
+
+
+def password_hash(password: str, salt: str) -> str:
+    return hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        200_000,
+    ).hex()
+
+
+def new_password_credentials(password: str) -> tuple[str, str]:
+    salt = secrets.token_hex(16)
+    return password_hash(password, salt), salt
+
+
+def password_matches(password: str, stored_hash: str, stored_salt: str) -> bool:
+    if not stored_hash or not stored_salt:
+        return False
+    return hmac.compare_digest(password_hash(password, stored_salt), stored_hash)
+
+
 def build_whatsapp_url(message: str) -> str:
     return f"https://wa.me/{digits_only(normalize_phone(CONTACT_PHONE))}?text={quote(message)}"
 
@@ -629,6 +741,7 @@ def send_confirmation_email(
     submission_title: str,
     details: list[tuple[str, object]],
     next_steps: str,
+    intro_text: str | None = None,
 ) -> tuple[bool, str]:
     if not smtp_configured():
         return False, "Email confirmations are not configured yet."
@@ -637,7 +750,7 @@ def send_confirmation_email(
     body_lines = [
         f"Hi {recipient_name or 'there'},",
         "",
-        f"We have received your {submission_title} submission at Matrika Academy.",
+        intro_text or f"We have received your {submission_title} submission at Matrika Academy.",
         "",
         "Details:",
         *detail_lines,
@@ -688,6 +801,47 @@ def render_confirmation_result(result: tuple[bool, str]) -> None:
         st.caption("Confirmation emails will start once SMTP secrets are added.")
     else:
         st.warning(message)
+
+
+def send_automatic_reply(
+    *,
+    trigger: str,
+    page: str,
+    to_email: str,
+    recipient_name: str,
+    subject: str,
+    submission_title: str,
+    details: list[tuple[str, object]],
+    next_steps: str,
+    account_email: str = "",
+    intro_text: str | None = None,
+) -> tuple[bool, str]:
+    result = send_confirmation_email(
+        to_email=to_email,
+        recipient_name=recipient_name,
+        subject=subject,
+        submission_title=submission_title,
+        details=details,
+        next_steps=next_steps,
+        intro_text=intro_text,
+    )
+    delivered, detail = result
+    status = "sent" if delivered else ("pending_configuration" if "not configured yet" in detail else "failed")
+    save_row(
+        AUTOMATED_REPLY_LOG_CSV,
+        {
+            "sent_at": current_timestamp(),
+            "page": page,
+            "trigger": trigger,
+            "recipient_name": recipient_name,
+            "email": to_email,
+            "account_email": account_email or to_email,
+            "subject": subject,
+            "status": status,
+            "detail": detail,
+        },
+    )
+    return result
 
 
 def worksheet_name_for(csv_name: str) -> str:
@@ -778,8 +932,20 @@ def ensure_google_worksheet(csv_name: str, row: dict | None = None):
             cols=max(20, len(headers) + 2),
         )
 
-    if headers and worksheet_name not in _ENSURED_WORKSHEETS and worksheet.row_values(1) != headers:
-        worksheet.update("A1", [headers], value_input_option="RAW")
+    if headers and worksheet_name not in _ENSURED_WORKSHEETS:
+        current_headers = worksheet.row_values(1)
+        if current_headers != headers:
+            existing_values = worksheet.get_all_values()
+            migrated_values = [headers]
+            if current_headers and existing_values:
+                for row_values in existing_values[1:]:
+                    old_row = {
+                        current_headers[index]: row_values[index] if index < len(row_values) else ""
+                        for index in range(len(current_headers))
+                    }
+                    migrated_values.append([old_row.get(header, "") for header in headers])
+            worksheet.clear()
+            worksheet.update("A1", migrated_values, value_input_option="RAW")
     _ENSURED_WORKSHEETS.add(worksheet_name)
     return worksheet
 
@@ -955,11 +1121,12 @@ def storage_status_lines() -> list[str]:
     else:
         lines.append(f"Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets or host env vars to protect the admin page.")
     if smtp_configured():
-        lines.append("Email confirmations are configured.")
+        lines.append("Automatic reply emails are configured.")
     else:
         lines.append(
-            f"Add `{SMTP_HOST_SECRET}`, `{SMTP_PORT_SECRET}`, `{SMTP_USERNAME_SECRET}`, and `{SMTP_PASSWORD_SECRET}` in secrets or env vars to send confirmations."
+            f"Add `{SMTP_HOST_SECRET}`, `{SMTP_PORT_SECRET}`, `{SMTP_USERNAME_SECRET}`, and `{SMTP_PASSWORD_SECRET}` in secrets or env vars to send automatic replies."
         )
+    lines.append("Learner accounts are stored with hashed passwords.")
     return lines
 
 
@@ -1013,6 +1180,172 @@ def save_row(csv_name: str, row: dict) -> None:
         if not file_path.exists() or file_path.stat().st_size == 0:
             writer.writeheader()
         writer.writerow({key: row.get(key, "") for key in headers})
+
+
+def replace_rows(csv_name: str, rows: list[dict[str, object]]) -> None:
+    file_path = DATA_DIR / csv_name
+    headers = worksheet_headers_for(csv_name, rows[0] if rows else None)
+    if not headers and rows:
+        headers = list(rows[0].keys())
+
+    with file_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=headers)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: row.get(key, "") for key in headers})
+
+    if not google_persistence_enabled():
+        return
+
+    try:
+        spreadsheet = get_google_spreadsheet()
+        worksheet = ensure_google_worksheet(
+            csv_name,
+            rows[0] if rows else {header: "" for header in headers},
+        )
+        if spreadsheet is None or worksheet is None:
+            return
+        worksheet.clear()
+        values = [headers]
+        values.extend([[str(row.get(key, "")) for key in headers] for row in rows])
+        worksheet.update("A1", values, value_input_option="RAW")
+        update_google_overview_sheet(spreadsheet)
+    except Exception as exc:
+        st.warning(f"Google Sheets sync failed for {csv_name}: {exc}")
+
+
+def learner_authenticated() -> bool:
+    return bool(st.session_state.get("learner_authenticated", False))
+
+
+def current_learner_profile() -> dict[str, str]:
+    return {
+        "full_name": str(st.session_state.get("learner_name", "")).strip(),
+        "email": str(st.session_state.get("learner_email", "")).strip(),
+        "phone": str(st.session_state.get("learner_phone", "")).strip(),
+    }
+
+
+def sync_learner_session(account: Mapping[str, object]) -> None:
+    st.session_state.learner_authenticated = True
+    st.session_state.learner_name = str(account.get("full_name", "")).strip()
+    st.session_state.learner_email = normalize_email(str(account.get("email", "")))
+    st.session_state.learner_phone = normalize_phone(str(account.get("phone", "")))
+
+
+def logout_learner() -> None:
+    st.session_state.learner_authenticated = False
+    st.session_state.learner_name = ""
+    st.session_state.learner_email = ""
+    st.session_state.learner_phone = ""
+
+
+def load_user_accounts() -> list[dict[str, str]]:
+    return load_submission_rows(USER_ACCOUNTS_CSV)
+
+
+def find_user_account(email: str) -> dict[str, str] | None:
+    target = normalize_email(email)
+    for row in reversed(load_user_accounts()):
+        if normalize_email(row.get("email", "")) == target and str(row.get("status", "active")).lower() == "active":
+            return row
+    return None
+
+
+def create_user_account(full_name: str, email: str, phone: str, password: str) -> dict[str, str]:
+    current_accounts = load_user_accounts()
+    hashed_password, salt = new_password_credentials(password)
+    now = current_timestamp()
+    row = {
+        "created_at": now,
+        "updated_at": now,
+        "full_name": normalize_text(full_name),
+        "email": normalize_email(email),
+        "phone": normalize_phone(phone),
+        "password_hash": hashed_password,
+        "password_salt": salt,
+        "status": "active",
+        "last_login_at": now,
+    }
+    current_accounts.append(row)
+    replace_rows(USER_ACCOUNTS_CSV, current_accounts)
+    return row
+
+
+def record_user_login(email: str) -> dict[str, str] | None:
+    current_accounts = load_user_accounts()
+    target = normalize_email(email)
+    updated_row = None
+    for row in current_accounts:
+        if normalize_email(row.get("email", "")) == target:
+            row["updated_at"] = current_timestamp()
+            row["last_login_at"] = current_timestamp()
+            updated_row = {str(key): str(value) for key, value in row.items()}
+            break
+    if updated_row is None:
+        return None
+    replace_rows(USER_ACCOUNTS_CSV, current_accounts)
+    return updated_row
+
+
+def authenticate_user_account(email: str, password: str) -> dict[str, str] | None:
+    account = find_user_account(email)
+    if not account:
+        return None
+    if not password_matches(password, str(account.get("password_hash", "")), str(account.get("password_salt", ""))):
+        return None
+    return record_user_login(email) or account
+
+
+def require_learner_account(page_name: str, description: str) -> bool:
+    if learner_authenticated():
+        return True
+
+    render_card(
+        "Create or log into your learner account",
+        description,
+        kicker="Account required",
+        meta=["Sign up once", "Automatic replies", "Protected access"],
+        class_name="info-card",
+    )
+    action_cols = st.columns(2)
+    with action_cols[0]:
+        st.button(
+            "Open learner account",
+            key=f"gate_{page_name}_account",
+            use_container_width=True,
+            on_click=jump_to,
+            args=("Account",),
+        )
+    with action_cols[1]:
+        st.link_button(
+            "Need help first?",
+            build_whatsapp_url(
+                f"Hi Matrika Academy, I want help creating my learner account before I use the {page_name.lower()} section."
+            ),
+            use_container_width=True,
+        )
+    return False
+
+
+def account_field_value(field_name: str, fallback: str = "") -> str:
+    profile = current_learner_profile()
+    return str(profile.get(field_name, "") or fallback)
+
+
+def sanitize_rows_for_admin(csv_name: str, rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    if csv_name != USER_ACCOUNTS_CSV:
+        return rows
+
+    sanitized: list[dict[str, str]] = []
+    for row in rows:
+        clean_row = dict(row)
+        if clean_row.get("password_hash"):
+            clean_row["password_hash"] = "hidden"
+        if clean_row.get("password_salt"):
+            clean_row["password_salt"] = "hidden"
+        sanitized.append(clean_row)
+    return sanitized
 
 
 def jump_to(page: str) -> None:
@@ -2048,6 +2381,51 @@ def render_sidebar() -> None:
             use_container_width=True,
         )
 
+        learner = current_learner_profile()
+        if learner_authenticated():
+            st.markdown(
+                f"""
+                <div class="sidebar-card">
+                    <div class="card-kicker">Learner account</div>
+                    <p class="card-copy"><strong>{esc(learner.get("full_name") or "Matrika learner")}</strong></p>
+                    <p class="card-copy">{esc(learner.get("email") or "")}</p>
+                    <p class="card-copy">Automatic replies and saved forms are tied to this account.</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            account_cols = st.columns(2)
+            with account_cols[0]:
+                st.button(
+                    "Open account",
+                    key="sidebar_account",
+                    use_container_width=True,
+                    on_click=jump_to,
+                    args=("Account",),
+                )
+            with account_cols[1]:
+                if st.button("Log out", key="sidebar_logout", use_container_width=True):
+                    logout_learner()
+                    jump_to("Dashboard")
+                    st.rerun()
+        else:
+            st.markdown(
+                """
+                <div class="sidebar-card">
+                    <div class="card-kicker">Learner account</div>
+                    <p class="card-copy">Create or log into your account before you book classes, save payments, or contact the academy through protected forms.</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.button(
+                "Create / login",
+                key="sidebar_account_entry",
+                use_container_width=True,
+                on_click=jump_to,
+                args=("Account",),
+            )
+
         storage_message = (
             "Persistent Google Sheets storage is connected."
             if google_persistence_enabled()
@@ -2224,6 +2602,149 @@ def dashboard_page() -> None:
     render_card_grid(FAQ_CARDS, columns=3)
 
 
+def account_page() -> None:
+    render_section(
+        "Learner account",
+        "Create your account once, then log in whenever you want to use the academy tools.",
+        "Protected sections now use learner accounts so submissions, automatic replies, and follow-up stay tied to the right person.",
+    )
+
+    if learner_authenticated():
+        learner = current_learner_profile()
+        render_card(
+            learner.get("full_name") or "Matrika learner",
+            "You are signed in. Protected forms will prefill your account details and automatic replies will go to this email.",
+            kicker="Logged in",
+            meta=[
+                learner.get("email") or "No email",
+                learner.get("phone") or "Phone optional",
+                "Protected access enabled",
+            ],
+            class_name="info-card",
+        )
+        action_cols = st.columns(3)
+        with action_cols[0]:
+            st.button(
+                "Go to admissions",
+                key="account_to_admissions",
+                use_container_width=True,
+                on_click=jump_to,
+                args=("Admissions",),
+            )
+        with action_cols[1]:
+            st.button(
+                "Open live studio",
+                key="account_to_live",
+                use_container_width=True,
+                on_click=jump_to,
+                args=("Live Studio",),
+            )
+        with action_cols[2]:
+            if st.button("Log out now", key="account_logout", use_container_width=True):
+                logout_learner()
+                send_user_home(
+                    kind="info",
+                    title="You have been logged out",
+                    body="Your learner session is closed. You can log in again anytime from the account page.",
+                )
+        st.info(
+            "Your learner account keeps admissions, attendance, payments, and support messages tied to one email so the academy can reply automatically and follow up faster."
+        )
+        return
+
+    create_col, login_col = st.columns(2)
+
+    with create_col:
+        render_card(
+            "Create learner account",
+            "Use your main email so the academy can send automatic replies, confirmations, and account-based follow-up.",
+            kicker="Sign up",
+            meta=["One-time setup", "Email-based access", "Protected forms"],
+            class_name="timeline-card",
+        )
+        with st.form("create_account_form"):
+            full_name = st.text_input("Full name")
+            email = st.text_input("Email")
+            phone = st.text_input("Phone (optional)")
+            password = st.text_input("Password", type="password")
+            confirm_password = st.text_input("Confirm password", type="password")
+            submit = st.form_submit_button("Create account")
+
+            if submit:
+                clean_name = normalize_text(full_name)
+                clean_email = normalize_email(email)
+                clean_phone = normalize_phone(phone)
+
+                if not clean_name or not clean_email or not password or not confirm_password:
+                    st.error("Please complete all required fields.")
+                elif not valid_email(clean_email):
+                    st.error("Enter a valid email address.")
+                elif phone and not valid_phone(phone):
+                    st.error("Enter a valid phone number or leave it blank.")
+                elif not valid_password(password):
+                    st.error(f"Use a password with at least {LEARNER_PASSWORD_MIN_LENGTH} characters.")
+                elif password != confirm_password:
+                    st.error("Passwords do not match.")
+                elif find_user_account(clean_email):
+                    st.error("An account with this email already exists. Please log in instead.")
+                else:
+                    account = create_user_account(clean_name, clean_email, clean_phone, password)
+                    sync_learner_session(account)
+                    email_result = send_automatic_reply(
+                        trigger="account_created",
+                        page="Account",
+                        to_email=clean_email,
+                        recipient_name=clean_name,
+                        subject="Welcome to Matrika Academy",
+                        submission_title="learner account setup",
+                        details=[
+                            ("Created at", account["created_at"]),
+                            ("Email", clean_email),
+                            ("Phone", clean_phone or "Not shared"),
+                        ],
+                        next_steps="You can now log in on any device, book sessions, submit payments, and use the protected academy forms with this account.",
+                        account_email=clean_email,
+                        intro_text="Your Matrika Academy learner account is ready.",
+                    )
+                    send_user_home(
+                        kind="success",
+                        title="Learner account created",
+                        body="Your account is ready and you can now use the protected parts of the academy.",
+                        email_result=email_result,
+                    )
+
+    with login_col:
+        render_card(
+            "Log into your account",
+            "Use the same email and password you created for the academy. Once you sign in, protected pages will use your saved account details.",
+            kicker="Login",
+            meta=["Protected access", "Saved details", "Automatic replies"],
+            class_name="timeline-card",
+        )
+        with st.form("login_account_form"):
+            email = st.text_input("Account email")
+            password = st.text_input("Password", type="password")
+            submit = st.form_submit_button("Log in")
+
+            if submit:
+                clean_email = normalize_email(email)
+                if not clean_email or not password:
+                    st.error("Email and password are required.")
+                elif not valid_email(clean_email):
+                    st.error("Enter a valid email address.")
+                else:
+                    account = authenticate_user_account(clean_email, password)
+                    if not account:
+                        st.error("Incorrect email or password.")
+                    else:
+                        sync_learner_session(account)
+                        send_user_home(
+                            kind="success",
+                            title="Welcome back",
+                            body="You are logged in and the protected academy tools are ready for you.",
+                        )
+
+
 def programs_page() -> None:
     render_section(
         "Academy tracks",
@@ -2305,6 +2826,13 @@ def admissions_page() -> None:
         "Book a trial, ask a question, or request a custom batch.",
         "Use this form to start the onboarding flow. The team will confirm by email or phone.",
     )
+    if not require_learner_account(
+        "Admissions",
+        "Create or log into your learner account before you request admissions so the academy can keep your batch details and automatic replies tied to one account.",
+    ):
+        return
+
+    learner = current_learner_profile()
     left, right = st.columns([0.95, 1.05])
     with left:
         render_card(
@@ -2323,10 +2851,13 @@ def admissions_page() -> None:
         )
 
     with right:
+        st.caption(
+            f"Signed in as {learner.get('email')}. Admissions requests and automatic replies will use this learner account."
+        )
         with st.form("booking_form"):
-            full_name = st.text_input("Full name")
-            email = st.text_input("Email")
-            phone = st.text_input("Phone")
+            full_name = st.text_input("Full name", value=learner.get("full_name", ""))
+            email = st.text_input("Email", value=learner.get("email", ""), disabled=True)
+            phone = st.text_input("Phone", value=learner.get("phone", ""))
             track = st.selectbox(
                 "Track",
                 [
@@ -2357,7 +2888,7 @@ def admissions_page() -> None:
 
             if submit:
                 clean_name = normalize_text(full_name)
-                clean_email = normalize_email(email)
+                clean_email = normalize_email(learner.get("email", "") or email)
                 clean_phone = normalize_phone(phone)
                 clean_goals = normalize_text(goals)
                 clean_notes = normalize_text(notes)
@@ -2372,6 +2903,8 @@ def admissions_page() -> None:
                     row = {
                         "submitted_at": current_timestamp(),
                         "page": "Admissions",
+                        "account_name": learner.get("full_name", ""),
+                        "account_email": learner.get("email", ""),
                         "name": clean_name,
                         "email": clean_email,
                         "phone": clean_phone,
@@ -2390,7 +2923,9 @@ def admissions_page() -> None:
                             body="We already saved this request, so there is no need to submit it again.",
                         )
                     save_row("bookings.csv", row)
-                    email_result = send_confirmation_email(
+                    email_result = send_automatic_reply(
+                        trigger="admissions_request",
+                        page="Admissions",
                         to_email=clean_email,
                         recipient_name=clean_name,
                         subject="Matrika Academy admission request received",
@@ -2404,6 +2939,7 @@ def admissions_page() -> None:
                             ("Preferred time", preferred_time),
                         ],
                         next_steps="We will review your request and contact you with the best batch or session plan.",
+                        account_email=learner.get("email", ""),
                     )
                     send_user_home(
                         kind="success",
@@ -2419,6 +2955,13 @@ def live_studio_page() -> None:
         "Join live sessions, access replays, and record attendance.",
         "This area keeps the live teaching experience organized and easy to revisit.",
     )
+    if not require_learner_account(
+        "Live Studio",
+        "Create or log into your learner account before you open live links, replay requests, or attendance so the academy can keep your class history together.",
+    ):
+        return
+
+    learner = current_learner_profile()
     live_tab, replay_tab, attendance_tab = st.tabs(["Live access", "Replays", "Attendance"])
 
     with live_tab:
@@ -2491,9 +3034,12 @@ def live_studio_page() -> None:
             )
 
     with attendance_tab:
+        st.caption(
+            f"Signed in as {learner.get('email')}. Attendance and replay support will be tied to this learner account."
+        )
         with st.form("attendance_form"):
-            attendee_name = st.text_input("Name")
-            attendee_email = st.text_input("Email")
+            attendee_name = st.text_input("Name", value=learner.get("full_name", ""))
+            attendee_email = st.text_input("Email", value=learner.get("email", ""), disabled=True)
             session = st.selectbox(
                 "Session",
                 ["Garbhasanskara", "Trimester", "Prenatal", "Postnatal", "Kids", "Teacher Training"],
@@ -2504,7 +3050,7 @@ def live_studio_page() -> None:
 
             if submit:
                 clean_name = normalize_text(attendee_name)
-                clean_email = normalize_email(attendee_email)
+                clean_email = normalize_email(learner.get("email", "") or attendee_email)
 
                 if not clean_name or not clean_email:
                     st.error("Name and email are required.")
@@ -2514,6 +3060,8 @@ def live_studio_page() -> None:
                     row = {
                         "submitted_at": current_timestamp(),
                         "page": "Live Studio",
+                        "account_name": learner.get("full_name", ""),
+                        "account_email": learner.get("email", ""),
                         "name": clean_name,
                         "email": clean_email,
                         "session": session,
@@ -2527,7 +3075,9 @@ def live_studio_page() -> None:
                             body="We already saved this attendance entry, so there is no need to submit it again.",
                         )
                     save_row("attendance.csv", row)
-                    email_result = send_confirmation_email(
+                    email_result = send_automatic_reply(
+                        trigger="attendance_saved",
+                        page="Live Studio",
                         to_email=clean_email,
                         recipient_name=clean_name,
                         subject="Matrika Academy attendance recorded",
@@ -2539,6 +3089,7 @@ def live_studio_page() -> None:
                             ("Time period", time_period),
                         ],
                         next_steps="Your attendance has been recorded. If you need the replay or a class link, reply to this email.",
+                        account_email=learner.get("email", ""),
                     )
                     send_user_home(
                         kind="success",
@@ -2554,6 +3105,13 @@ def certification_page() -> None:
         "Mentored training for future Matrika teachers.",
         "This pathway blends practice teaching, feedback loops, and specialty work with mothers and children.",
     )
+    if not require_learner_account(
+        "Certification",
+        "Create or log into your learner account before you apply so your certification journey, automatic replies, and mentor follow-up stay connected.",
+    ):
+        return
+
+    learner = current_learner_profile()
     render_metric_grid(CERT_METRICS)
     st.divider()
 
@@ -2570,9 +3128,12 @@ def certification_page() -> None:
             class_name="timeline-card",
         )
         st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
+        st.caption(
+            f"Signed in as {learner.get('email')}. Certification applications and automatic replies will use this learner account."
+        )
         with st.form("training_form"):
-            full_name = st.text_input("Full name")
-            email = st.text_input("Email")
+            full_name = st.text_input("Full name", value=learner.get("full_name", ""))
+            email = st.text_input("Email", value=learner.get("email", ""), disabled=True)
             time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
             experience = st.selectbox(
                 "Experience",
@@ -2583,7 +3144,7 @@ def certification_page() -> None:
 
             if submit:
                 clean_name = normalize_text(full_name)
-                clean_email = normalize_email(email)
+                clean_email = normalize_email(learner.get("email", "") or email)
                 clean_motivation = normalize_text(motivation)
 
                 if not clean_name or not clean_email:
@@ -2594,6 +3155,8 @@ def certification_page() -> None:
                     row = {
                         "submitted_at": current_timestamp(),
                         "page": "Certification",
+                        "account_name": learner.get("full_name", ""),
+                        "account_email": learner.get("email", ""),
                         "name": clean_name,
                         "email": clean_email,
                         "time_period": time_period,
@@ -2607,7 +3170,9 @@ def certification_page() -> None:
                             body="We already saved this application, so there is no need to submit it again.",
                         )
                     save_row("training_applications.csv", row)
-                    email_result = send_confirmation_email(
+                    email_result = send_automatic_reply(
+                        trigger="certification_application",
+                        page="Certification",
                         to_email=clean_email,
                         recipient_name=clean_name,
                         subject="Matrika Academy certification application received",
@@ -2618,6 +3183,7 @@ def certification_page() -> None:
                             ("Experience", experience),
                         ],
                         next_steps="Our mentors will review your application and reach out with the next steps.",
+                        account_email=learner.get("email", ""),
                     )
                     send_user_home(
                         kind="success",
@@ -2633,6 +3199,13 @@ def kids_page() -> None:
         "Movement, stories, and calm-down breath for ages 5-14.",
         "The experience is designed to keep children engaged without feeling rushed or overwhelmed.",
     )
+    if not require_learner_account(
+        "Kids Studio",
+        "Create or log into your learner account before you send a kids enquiry so the academy can reply automatically and keep parent communication in one place.",
+    ):
+        return
+
+    learner = current_learner_profile()
     render_metric_grid(KIDS_METRICS)
     st.divider()
     render_card_grid(
@@ -2661,18 +3234,21 @@ def kids_page() -> None:
     )
 
     st.divider()
+    st.caption(
+        f"Signed in as {learner.get('email')}. Kids enquiries and automatic replies will use this learner account."
+    )
     with st.form("kids_form"):
-        parent = st.text_input("Parent / Guardian name")
+        parent = st.text_input("Parent / Guardian name", value=learner.get("full_name", ""))
         child = st.text_input("Child name")
         age = st.number_input("Child age", min_value=3, max_value=18, step=1)
-        email = st.text_input("Contact email")
+        email = st.text_input("Contact email", value=learner.get("email", ""), disabled=True)
         time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
         submit = st.form_submit_button("Enroll or enquire")
 
         if submit:
             clean_parent = normalize_text(parent)
             clean_child = normalize_text(child)
-            clean_email = normalize_email(email)
+            clean_email = normalize_email(learner.get("email", "") or email)
 
             if not clean_parent or not clean_child or not clean_email:
                 st.error("Parent name, child name, and email are required.")
@@ -2682,6 +3258,8 @@ def kids_page() -> None:
                 row = {
                     "submitted_at": current_timestamp(),
                     "page": "Kids Studio",
+                    "account_name": learner.get("full_name", ""),
+                    "account_email": learner.get("email", ""),
                     "parent": clean_parent,
                     "child": clean_child,
                     "age": age,
@@ -2695,7 +3273,9 @@ def kids_page() -> None:
                         body="We already saved this enquiry, so there is no need to submit it again.",
                     )
                 save_row("kids_enquiries.csv", row)
-                email_result = send_confirmation_email(
+                email_result = send_automatic_reply(
+                    trigger="kids_enquiry",
+                    page="Kids Studio",
                     to_email=clean_email,
                     recipient_name=clean_parent,
                     subject="Matrika Academy kids studio enquiry received",
@@ -2707,6 +3287,7 @@ def kids_page() -> None:
                         ("Time period", time_period),
                     ],
                     next_steps="We will share the kids schedule, available session options, and joining details soon.",
+                    account_email=learner.get("email", ""),
                 )
                 send_user_home(
                     kind="success",
@@ -2722,6 +3303,13 @@ def payments_page() -> None:
         "Choose a plan and share proof when you are ready.",
         "The app keeps payment steps simple and transparent so the team can confirm your seat quickly.",
     )
+    if not require_learner_account(
+        "Payments",
+        "Create or log into your learner account before you submit payment proof so receipts, confirmations, and follow-up stay tied to your account email.",
+    ):
+        return
+
+    learner = current_learner_profile()
     render_card_grid(PAYMENT_PLANS, columns=3, class_name="pricing-card")
     st.divider()
 
@@ -2751,9 +3339,12 @@ def payments_page() -> None:
 
     st.divider()
     render_section("Share payment proof", "Upload your payment reference so the team can verify it.", "Saved entries go to a CSV file for easy review.")
+    st.caption(
+        f"Signed in as {learner.get('email')}. Payment confirmations and automatic replies will use this learner account."
+    )
     with st.form("payment_form"):
-        full_name = st.text_input("Name")
-        email = st.text_input("Email")
+        full_name = st.text_input("Name", value=learner.get("full_name", ""))
+        email = st.text_input("Email", value=learner.get("email", ""), disabled=True)
         time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
         plan = st.selectbox("Plan", [item["title"] for item in PAYMENT_PLANS])
         amount = st.number_input("Amount paid (INR)", min_value=500, max_value=100000, step=100)
@@ -2764,7 +3355,7 @@ def payments_page() -> None:
 
         if submit:
             clean_name = normalize_text(full_name)
-            clean_email = normalize_email(email)
+            clean_email = normalize_email(learner.get("email", "") or email)
             clean_reference = normalize_text(reference)
             clean_notes = normalize_text(notes)
 
@@ -2776,6 +3367,8 @@ def payments_page() -> None:
                 row = {
                     "submitted_at": current_timestamp(),
                     "page": "Payments",
+                    "account_name": learner.get("full_name", ""),
+                    "account_email": learner.get("email", ""),
                     "name": clean_name,
                     "email": clean_email,
                     "time_period": time_period,
@@ -2792,7 +3385,9 @@ def payments_page() -> None:
                         body="We already saved this payment proof, so there is no need to submit it again.",
                     )
                 save_row("payments.csv", row)
-                email_result = send_confirmation_email(
+                email_result = send_automatic_reply(
+                    trigger="payment_proof",
+                    page="Payments",
                     to_email=clean_email,
                     recipient_name=clean_name,
                     subject="Matrika Academy payment proof received",
@@ -2806,6 +3401,7 @@ def payments_page() -> None:
                         ("Reference", clean_reference),
                     ],
                     next_steps="We will verify the payment and confirm your seat on email or WhatsApp.",
+                    account_email=learner.get("email", ""),
                 )
                 send_user_home(
                     kind="success",
@@ -2821,6 +3417,13 @@ def contact_page() -> None:
         "Reach the team by email, phone, or the form below.",
         "We keep replies friendly and quick so families and teachers always know the next step.",
     )
+    if not require_learner_account(
+        "Contact",
+        "Create or log into your learner account before you send support messages so the academy can keep every reply tied to the right learner profile.",
+    ):
+        return
+
+    learner = current_learner_profile()
     render_card_grid(CONTACT_CARDS, columns=3, class_name="contact-card")
     st.divider()
 
@@ -2839,16 +3442,19 @@ def contact_page() -> None:
             "Hi Matrika Academy, I need help with classes, payments, or admissions.",
         )
     with right:
+        st.caption(
+            f"Signed in as {learner.get('email')}. Contact messages and automatic replies will use this learner account."
+        )
         with st.form("contact_form"):
-            full_name = st.text_input("Name")
-            email = st.text_input("Email")
+            full_name = st.text_input("Name", value=learner.get("full_name", ""))
+            email = st.text_input("Email", value=learner.get("email", ""), disabled=True)
             time_period = st.selectbox("Time period", TIME_PERIOD_OPTIONS)
             message = st.text_area("Message")
             submit = st.form_submit_button("Send message")
 
             if submit:
                 clean_name = normalize_text(full_name)
-                clean_email = normalize_email(email)
+                clean_email = normalize_email(learner.get("email", "") or email)
                 clean_message = normalize_text(message)
 
                 if not clean_name or not clean_email or not clean_message:
@@ -2859,6 +3465,8 @@ def contact_page() -> None:
                     row = {
                         "submitted_at": current_timestamp(),
                         "page": "Contact",
+                        "account_name": learner.get("full_name", ""),
+                        "account_email": learner.get("email", ""),
                         "name": clean_name,
                         "email": clean_email,
                         "time_period": time_period,
@@ -2871,7 +3479,9 @@ def contact_page() -> None:
                             body="We already saved this message, so there is no need to submit it again.",
                         )
                     save_row("contact_messages.csv", row)
-                    email_result = send_confirmation_email(
+                    email_result = send_automatic_reply(
+                        trigger="contact_message",
+                        page="Contact",
                         to_email=clean_email,
                         recipient_name=clean_name,
                         subject="Matrika Academy message received",
@@ -2882,6 +3492,7 @@ def contact_page() -> None:
                             ("Message", clean_message),
                         ],
                         next_steps="We have received your message and will reply as soon as possible.",
+                        account_email=learner.get("email", ""),
                     )
                     send_user_home(
                         kind="success",
@@ -2973,8 +3584,9 @@ def admin_page() -> None:
 
     selected_file = st.selectbox("Submission source", submission_files)
     rows = load_submission_rows(selected_file)
+    admin_rows = sanitize_rows_for_admin(selected_file, rows)
 
-    if not rows:
+    if not admin_rows:
         st.info(f"No entries found in `{selected_file}` yet.")
         return
 
@@ -2982,7 +3594,7 @@ def admin_page() -> None:
     with action_cols[0]:
         st.download_button(
             "Download CSV",
-            data=rows_to_csv_bytes(rows),
+            data=rows_to_csv_bytes(admin_rows),
             file_name=selected_file,
             mime="text/csv",
             use_container_width=True,
@@ -2995,12 +3607,13 @@ def admin_page() -> None:
         if st.button("Refresh data", use_container_width=True):
             st.rerun()
 
-    st.caption(f"{len(rows)} saved entries in `{selected_file}`")
-    st.dataframe(rows[::-1], use_container_width=True, hide_index=True)
+    st.caption(f"{len(admin_rows)} saved entries in `{selected_file}`")
+    st.dataframe(admin_rows[::-1], use_container_width=True, hide_index=True)
 
 
 PAGE_ROUTES = {
     "Dashboard": dashboard_page,
+    "Account": account_page,
     "Programs": programs_page,
     "Schedule": schedule_page,
     "Admissions": admissions_page,
@@ -3016,6 +3629,11 @@ PAGE_ROUTES = {
 def initialize_state() -> None:
     st.session_state.setdefault("page", PAGE_NAMES[0])
     st.session_state.setdefault("recent_submissions", {})
+    st.session_state.setdefault("learner_authenticated", False)
+    st.session_state.setdefault("learner_name", "")
+    st.session_state.setdefault("learner_email", "")
+    st.session_state.setdefault("learner_phone", "")
+    st.session_state.setdefault("sheets_initialized", False)
     if st.session_state.page not in PAGE_NAMES:
         st.session_state.page = PAGE_NAMES[0]
 
@@ -3023,6 +3641,9 @@ def initialize_state() -> None:
 def main() -> None:
     apply_theme()
     initialize_state()
+    if google_persistence_enabled() and not st.session_state.get("sheets_initialized", False):
+        ensure_google_submission_sheets()
+        st.session_state.sheets_initialized = True
     render_sidebar()
     render_topbar()
     render_flash_notice()
