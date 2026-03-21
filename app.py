@@ -1232,6 +1232,20 @@ def logout_learner() -> None:
     st.session_state.learner_phone = ""
 
 
+def remember_recent_account_creation(email: str) -> None:
+    st.session_state.recent_account_creation = {
+        "email": normalize_email(email),
+        "timestamp": time.time(),
+    }
+
+
+def recent_account_creation_matches(email: str) -> bool:
+    recent = st.session_state.get("recent_account_creation", {})
+    recent_email = normalize_email(str(recent.get("email", "")))
+    recent_timestamp = float(recent.get("timestamp", 0) or 0)
+    return bool(recent_email) and recent_email == normalize_email(email) and (time.time() - recent_timestamp) < SUBMISSION_COOLDOWN_SECONDS
+
+
 def load_user_accounts() -> list[dict[str, str]]:
     return load_submission_rows(USER_ACCOUNTS_CSV)
 
@@ -2672,10 +2686,20 @@ def account_page() -> None:
                     st.error(f"Use a password with at least {LEARNER_PASSWORD_MIN_LENGTH} characters.")
                 elif password != confirm_password:
                     st.error("Passwords do not match.")
+                elif find_user_account(clean_email) and recent_account_creation_matches(clean_email):
+                    existing_account = find_user_account(clean_email)
+                    if existing_account:
+                        sync_learner_session(existing_account)
+                        send_user_home(
+                            kind="success",
+                            title="Learner account created",
+                            body="Your account is ready and you can now use the protected parts of the academy.",
+                        )
                 elif find_user_account(clean_email):
                     st.error("An account with this email already exists. Please log in instead.")
                 else:
                     account = create_user_account(clean_name, clean_email, clean_phone, password)
+                    remember_recent_account_creation(clean_email)
                     sync_learner_session(account)
                     email_result = send_automatic_reply(
                         trigger="account_created",
