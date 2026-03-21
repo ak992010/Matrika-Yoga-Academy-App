@@ -18,6 +18,7 @@ from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import streamlit as st
+from streamlit.errors import StreamlitSecretNotFoundError
 
 APP_DIR = Path(__file__).parent
 DATA_DIR = APP_DIR / "submissions"
@@ -478,8 +479,15 @@ def env_name_for(secret_key: str) -> str:
     return secret_key.upper()
 
 
+def get_streamlit_secret(secret_key: str) -> object:
+    try:
+        return st.secrets.get(secret_key, None)
+    except StreamlitSecretNotFoundError:
+        return None
+
+
 def get_secret_value(secret_key: str, default: object = "") -> object:
-    streamlit_value = st.secrets.get(secret_key, None)
+    streamlit_value = get_streamlit_secret(secret_key)
     if isinstance(streamlit_value, Mapping):
         return dict(streamlit_value)
     if streamlit_value not in (None, ""):
@@ -488,7 +496,7 @@ def get_secret_value(secret_key: str, default: object = "") -> object:
 
 
 def get_google_service_account_secret() -> object:
-    streamlit_value = st.secrets.get(GOOGLE_SERVICE_ACCOUNT_SECRET, None)
+    streamlit_value = get_streamlit_secret(GOOGLE_SERVICE_ACCOUNT_SECRET)
     if isinstance(streamlit_value, Mapping):
         return dict(streamlit_value)
     if streamlit_value not in (None, ""):
