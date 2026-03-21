@@ -14,7 +14,7 @@ import smtplib
 import ssl
 import time
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.message import EmailMessage
 from pathlib import Path
 from urllib.parse import quote
@@ -56,8 +56,11 @@ PRIMARY_PUBLIC_DOMAIN = "matrikayogaacademy.com"
 LEARNER_PASSWORD_MIN_LENGTH = 8
 USER_ACCOUNTS_CSV = "user_accounts.csv"
 AUTOMATED_REPLY_LOG_CSV = "reply_automation_logs.csv"
+PASSWORD_RESET_REQUESTS_CSV = "password_reset_requests.csv"
 PAGE_WIDGET_KEY = "page_selector"
 _ENSURED_WORKSHEETS: set[str] = set()
+PASSWORD_RESET_CODE_LENGTH = 6
+PASSWORD_RESET_TTL_MINUTES = 15
 
 SUBMISSION_SCHEMAS = {
     "bookings.csv": {
@@ -176,6 +179,22 @@ SUBMISSION_SCHEMAS = {
             "password_salt",
             "status",
             "last_login_at",
+        ],
+    },
+    PASSWORD_RESET_REQUESTS_CSV: {
+        "worksheet": "password_reset_requests",
+        "label": "Password reset requests",
+        "headers": [
+            "requested_at",
+            "request_id",
+            "email",
+            "code_hash",
+            "code_salt",
+            "expires_at",
+            "status",
+            "consumed_at",
+            "last_attempt_at",
+            "attempt_count",
         ],
     },
     AUTOMATED_REPLY_LOG_CSV: {
@@ -731,6 +750,10 @@ def password_matches(password: str, stored_hash: str, stored_salt: str) -> bool:
     return hmac.compare_digest(password_hash(password, stored_salt), stored_hash)
 
 
+def verification_code() -> str:
+    return "".join(secrets.choice("0123456789") for _ in range(PASSWORD_RESET_CODE_LENGTH))
+
+
 def build_whatsapp_url(message: str) -> str:
     return f"https://wa.me/{digits_only(normalize_phone(CONTACT_PHONE))}?text={quote(message)}"
 
@@ -816,6 +839,25 @@ def get_google_service_account_secret() -> object:
 
 def current_timestamp() -> str:
     return datetime.now(IST_ZONE).strftime("%Y-%m-%d %H:%M:%S IST")
+
+
+def current_time() -> datetime:
+    return datetime.now(IST_ZONE)
+
+
+def format_timestamp(moment: datetime) -> str:
+    return moment.astimezone(IST_ZONE).strftime("%Y-%m-%d %H:%M:%S IST")
+
+
+def parse_timestamp(value: str) -> datetime | None:
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.strptime(text, "%Y-%m-%d %H:%M:%S IST")
+    except ValueError:
+        return None
+    return parsed.replace(tzinfo=IST_ZONE)
 
 
 def smtp_configured() -> bool:
@@ -1241,10 +1283,10 @@ def storage_status_lines() -> list[str]:
     else:
         lines.append(f"Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets or host env vars to protect the admin page.")
     if smtp_configured():
-        lines.append("Automatic reply emails are configured.")
+        lines.append("Automatic reply emails and password reset verification are configured.")
     else:
         lines.append(
-            f"Add `{SMTP_HOST_SECRET}`, `{SMTP_PORT_SECRET}`, `{SMTP_USERNAME_SECRET}`, and `{SMTP_PASSWORD_SECRET}` in secrets or env vars to send automatic replies."
+            f"Add `{SMTP_HOST_SECRET}`, `{SMTP_PORT_SECRET}`, `{SMTP_USERNAME_SECRET}`, and `{SMTP_PASSWORD_SECRET}` in secrets or env vars to send automatic replies and password reset codes."
         )
     lines.append("Learner accounts are stored with hashed passwords.")
     return lines
@@ -1452,6 +1494,133 @@ def update_user_account(email: str, updates: Mapping[str, object]) -> dict[str, 
     return updated_row
 
 
+def load_password_reset_requests() -> list[dict[str, str]]:
+    return load_submission_rows(PASSWORD_RESET_REQUESTS_CSV)
+
+
+def update_password_reset_requests(rows: list[dict[str, object]]) -> None:
+    replace_rows(PASSWORD_RESET_REQUESTS_CSV, rows)
+
+
+def expire_password_reset_requests(email: str = "") -> None:
+    target = normalize_email(email)
+    current_requests = load_password_reset_requests()
+    changed = False
+    now = current_time()
+    for row in current_requests:
+        if target and normalize_email(row.get("email", "")) != target:
+            continue
+        if str(row.get("status", "")).lower() == "pending":
+            expires_at = parse_timestamp(str(row.get("expires_at", "")))
+            if expires_at and expires_at <= now:
+                row["status"] = "expired"
+                changed = True
+    if changed:
+        update_password_reset_requests(current_requests)
+
+
+def create_password_reset_request(email: str) -> tuple[str, dict[str, str]]:
+    target = normalize_email(email)
+    current_requests = load_password_reset_requests()
+    now = current_time()
+    changed = False
+    for row in current_requests:
+        if normalize_email(row.get("email", "")) == target and str(row.get("status", "")).lower() == "pending":
+            row["status"] = "superseded"
+            changed = True
+
+    code = verification_code()
+    code_hash_value, code_salt = new_password_credentials(code)
+    request_row = {
+        "requested_at": format_timestamp(now),
+        "request_id": secrets.token_hex(8),
+        "email": target,
+        "code_hash": code_hash_value,
+        "code_salt": code_salt,
+        "expires_at": format_timestamp(now + timedelta(minutes=PASSWORD_RESET_TTL_MINUTES)),
+        "status": "pending",
+        "consumed_at": "",
+        "last_attempt_at": "",
+        "attempt_count": "0",
+    }
+    current_requests.append(request_row)
+    if changed or current_requests:
+        update_password_reset_requests(current_requests)
+    return code, {str(key): str(value) for key, value in request_row.items()}
+
+
+def latest_active_password_reset_request(email: str) -> dict[str, str] | None:
+    expire_password_reset_requests(email)
+    target = normalize_email(email)
+    for row in reversed(load_password_reset_requests()):
+        if normalize_email(row.get("email", "")) != target:
+            continue
+        if str(row.get("status", "")).lower() != "pending":
+            continue
+        expires_at = parse_timestamp(str(row.get("expires_at", "")))
+        if expires_at and expires_at > current_time():
+            return row
+    return None
+
+
+def record_password_reset_attempt(email: str, request_id: str) -> None:
+    target = normalize_email(email)
+    current_requests = load_password_reset_requests()
+    changed = False
+    for row in current_requests:
+        if normalize_email(row.get("email", "")) != target or str(row.get("request_id", "")) != str(request_id):
+            continue
+        attempts = int(str(row.get("attempt_count", "0") or "0"))
+        row["attempt_count"] = str(attempts + 1)
+        row["last_attempt_at"] = current_timestamp()
+        changed = True
+        break
+    if changed:
+        update_password_reset_requests(current_requests)
+
+
+def consume_password_reset_request(email: str, request_id: str, status: str = "used") -> None:
+    target = normalize_email(email)
+    current_requests = load_password_reset_requests()
+    changed = False
+    for row in current_requests:
+        if normalize_email(row.get("email", "")) != target or str(row.get("request_id", "")) != str(request_id):
+            continue
+        row["status"] = status
+        row["consumed_at"] = current_timestamp()
+        changed = True
+        break
+    if changed:
+        update_password_reset_requests(current_requests)
+
+
+def verify_password_reset_code(email: str, code: str) -> tuple[bool, str, dict[str, str] | None]:
+    target = normalize_email(email)
+    request_row = latest_active_password_reset_request(target)
+    if not request_row:
+        return False, "No active password reset request was found for this email. Request a new verification code.", None
+    request_id = str(request_row.get("request_id", ""))
+    record_password_reset_attempt(target, request_id)
+    if not password_matches(code, str(request_row.get("code_hash", "")), str(request_row.get("code_salt", ""))):
+        return False, "The verification code is incorrect. Check the email and try again.", None
+    return True, "Verification code accepted.", request_row
+
+
+def reset_user_password(email: str, new_password: str, request_row: Mapping[str, object]) -> dict[str, str] | None:
+    hashed_password, salt = new_password_credentials(new_password)
+    updated_account = update_user_account(
+        email,
+        {
+            "password_hash": hashed_password,
+            "password_salt": salt,
+            "last_login_at": current_timestamp(),
+        },
+    )
+    if updated_account:
+        consume_password_reset_request(email, str(request_row.get("request_id", "")))
+    return updated_account
+
+
 def preferred_payment_app(learner: Mapping[str, object]) -> str:
     return str(learner.get("linked_payment_app", "")).strip()
 
@@ -1501,18 +1670,29 @@ def require_learner_account(page_name: str, description: str) -> bool:
 
 
 def sanitize_rows_for_admin(csv_name: str, rows: list[dict[str, str]]) -> list[dict[str, str]]:
-    if csv_name != USER_ACCOUNTS_CSV:
-        return rows
+    if csv_name == USER_ACCOUNTS_CSV:
+        sanitized: list[dict[str, str]] = []
+        for row in rows:
+            clean_row = dict(row)
+            if clean_row.get("password_hash"):
+                clean_row["password_hash"] = "hidden"
+            if clean_row.get("password_salt"):
+                clean_row["password_salt"] = "hidden"
+            sanitized.append(clean_row)
+        return sanitized
 
-    sanitized: list[dict[str, str]] = []
-    for row in rows:
-        clean_row = dict(row)
-        if clean_row.get("password_hash"):
-            clean_row["password_hash"] = "hidden"
-        if clean_row.get("password_salt"):
-            clean_row["password_salt"] = "hidden"
-        sanitized.append(clean_row)
-    return sanitized
+    if csv_name == PASSWORD_RESET_REQUESTS_CSV:
+        sanitized = []
+        for row in rows:
+            clean_row = dict(row)
+            if clean_row.get("code_hash"):
+                clean_row["code_hash"] = "hidden"
+            if clean_row.get("code_salt"):
+                clean_row["code_salt"] = "hidden"
+            sanitized.append(clean_row)
+        return sanitized
+
+    return rows
 
 
 def jump_to(page: str) -> None:
@@ -3478,11 +3658,139 @@ def account_page() -> None:
                         st.error("Incorrect email or password.")
                     else:
                         sync_learner_session(account)
+                        login_email_result = send_automatic_reply(
+                            trigger="login_alert",
+                            page="Account",
+                            to_email=clean_email,
+                            recipient_name=str(account.get("full_name", "")).strip() or "Matrika learner",
+                            subject="Matrika Academy login alert",
+                            submission_title="account login",
+                            details=[
+                                ("Login time", current_timestamp()),
+                                ("Account email", clean_email),
+                            ],
+                            next_steps="If this login was you, no action is needed. If it was not you, reset your password from the account page right away.",
+                            account_email=clean_email,
+                            intro_text="A new login to your Matrika Academy learner account was detected.",
+                        )
                         send_user_home(
                             kind="success",
                             title="Welcome back",
                             body="You are logged in and the protected academy tools are ready for you.",
+                            email_result=login_email_result,
                         )
+
+        st.markdown("<div style='height:0.95rem'></div>", unsafe_allow_html=True)
+        render_card(
+            "Forgot your password?",
+            "Request a six-digit verification code by email, then set a new password right here.",
+            kicker="Reset access",
+            meta=[f"{PASSWORD_RESET_CODE_LENGTH}-digit code", f"{PASSWORD_RESET_TTL_MINUTES}-minute expiry", "Email verification"],
+            class_name="timeline-card",
+        )
+        render_form_banner(
+            "&#10048;",
+            "Verify by email and reset calmly",
+            "We will send a short verification code to your learner email. Enter it below with a new password to restore access.",
+        )
+        default_reset_email = str(st.session_state.get("password_reset_email", "")).strip()
+        reset_request_col, reset_verify_col = st.columns(2)
+        with reset_request_col:
+            with st.form("password_reset_request_form"):
+                reset_email = st.text_input("Learner email", value=default_reset_email, key="password_reset_email_input")
+                request_submit = st.form_submit_button("Send verification code")
+
+                if request_submit:
+                    clean_reset_email = normalize_email(reset_email)
+                    st.session_state.password_reset_email = clean_reset_email
+                    if not clean_reset_email:
+                        st.error("Enter the learner email linked to your account.")
+                    elif not valid_email(clean_reset_email):
+                        st.error("Enter a valid email address.")
+                    else:
+                        account = find_user_account(clean_reset_email)
+                        if not account:
+                            st.info("If an account exists for this email, a verification code will be sent.")
+                        else:
+                            reset_code, request_row = create_password_reset_request(clean_reset_email)
+                            reset_email_result = send_automatic_reply(
+                                trigger="password_reset_requested",
+                                page="Account",
+                                to_email=clean_reset_email,
+                                recipient_name=str(account.get("full_name", "")).strip() or "Matrika learner",
+                                subject="Matrika Academy password reset code",
+                                submission_title="password reset request",
+                                details=[
+                                    ("Requested at", request_row["requested_at"]),
+                                    ("Verification code", reset_code),
+                                    ("Valid for", f"{PASSWORD_RESET_TTL_MINUTES} minutes"),
+                                ],
+                                next_steps="Enter this verification code in the password reset form inside the Matrika Academy app and choose a new password. If you did not request this, you can ignore the email.",
+                                account_email=clean_reset_email,
+                                intro_text="We received a request to reset your Matrika Academy learner password.",
+                            )
+                            delivered, message = reset_email_result
+                            if delivered:
+                                st.success(f"Verification code sent to {clean_reset_email}.")
+                            elif "not configured yet" in message:
+                                st.warning("Password reset email could not be sent yet because SMTP is not configured.")
+                            else:
+                                st.warning(message)
+
+        with reset_verify_col:
+            with st.form("password_reset_verify_form"):
+                verify_email = st.text_input("Email for reset", value=default_reset_email, key="password_reset_verify_email")
+                verification_code_input = st.text_input("Verification code", max_chars=PASSWORD_RESET_CODE_LENGTH)
+                new_password = st.text_input("New password", type="password")
+                confirm_new_password = st.text_input("Confirm new password", type="password")
+                verify_submit = st.form_submit_button("Reset password")
+
+                if verify_submit:
+                    clean_verify_email = normalize_email(verify_email)
+                    clean_code = digits_only(verification_code_input)
+                    st.session_state.password_reset_email = clean_verify_email
+
+                    if not clean_verify_email or not clean_code or not new_password or not confirm_new_password:
+                        st.error("Complete all password reset fields.")
+                    elif not valid_email(clean_verify_email):
+                        st.error("Enter a valid email address.")
+                    elif len(clean_code) != PASSWORD_RESET_CODE_LENGTH:
+                        st.error(f"Enter the {PASSWORD_RESET_CODE_LENGTH}-digit verification code from the email.")
+                    elif not valid_password(new_password):
+                        st.error(f"Use a password with at least {LEARNER_PASSWORD_MIN_LENGTH} characters.")
+                    elif new_password != confirm_new_password:
+                        st.error("Passwords do not match.")
+                    else:
+                        verified, message, request_row = verify_password_reset_code(clean_verify_email, clean_code)
+                        if not verified or request_row is None:
+                            st.error(message)
+                        else:
+                            updated_account = reset_user_password(clean_verify_email, new_password, request_row)
+                            if not updated_account:
+                                st.error("We could not update the password for that learner account.")
+                            else:
+                                sync_learner_session(updated_account)
+                                reset_confirmation_result = send_automatic_reply(
+                                    trigger="password_reset_completed",
+                                    page="Account",
+                                    to_email=clean_verify_email,
+                                    recipient_name=str(updated_account.get("full_name", "")).strip() or "Matrika learner",
+                                    subject="Matrika Academy password updated",
+                                    submission_title="password reset confirmation",
+                                    details=[
+                                        ("Updated at", current_timestamp()),
+                                        ("Account email", clean_verify_email),
+                                    ],
+                                    next_steps="Your password has been updated and you are now signed in. If you did not make this change, contact the academy team immediately.",
+                                    account_email=clean_verify_email,
+                                    intro_text="Your Matrika Academy learner password was updated successfully.",
+                                )
+                                send_user_home(
+                                    kind="success",
+                                    title="Password updated",
+                                    body="Your password has been reset and you are now signed in.",
+                                    email_result=reset_confirmation_result,
+                                )
 
 
 def programs_page() -> None:
