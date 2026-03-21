@@ -711,14 +711,17 @@ def ensure_google_submission_sheets() -> None:
     if not google_persistence_enabled():
         return
 
-    spreadsheet = get_google_spreadsheet()
-    if spreadsheet is None:
+    try:
+        spreadsheet = get_google_spreadsheet()
+        if spreadsheet is None:
+            return
+
+        for csv_name in SUBMISSION_SCHEMAS:
+            ensure_google_worksheet(csv_name)
+
+        update_google_overview_sheet(spreadsheet)
+    except Exception:
         return
-
-    for csv_name in SUBMISSION_SCHEMAS:
-        ensure_google_worksheet(csv_name)
-
-    update_google_overview_sheet(spreadsheet)
 
 
 def update_google_overview_sheet(spreadsheet=None) -> None:
@@ -837,18 +840,21 @@ def read_local_rows(csv_name: str) -> list[dict[str, str]]:
 def read_google_rows(csv_name: str) -> list[dict[str, str]]:
     if not google_persistence_enabled():
         return []
-    spreadsheet = get_google_spreadsheet()
-    if spreadsheet is None:
-        return []
-
-    import gspread
-
-    worksheet_name = worksheet_name_for(csv_name)
     try:
-        worksheet = spreadsheet.worksheet(worksheet_name)
-    except gspread.WorksheetNotFound:
+        spreadsheet = get_google_spreadsheet()
+        if spreadsheet is None:
+            return []
+
+        import gspread
+
+        worksheet_name = worksheet_name_for(csv_name)
+        try:
+            worksheet = spreadsheet.worksheet(worksheet_name)
+        except gspread.WorksheetNotFound:
+            return []
+        values = worksheet.get_all_records()
+    except Exception:
         return []
-    values = worksheet.get_all_records()
     return [{str(key): str(value) for key, value in row.items()} for row in values]
 
 
@@ -2817,9 +2823,6 @@ def initialize_state() -> None:
 def main() -> None:
     apply_theme()
     initialize_state()
-    if google_persistence_enabled() and not st.session_state.get("google_sheet_setup_ready", False):
-        ensure_google_submission_sheets()
-        st.session_state.google_sheet_setup_ready = True
     render_sidebar()
     render_topbar()
     render_flash_notice()
