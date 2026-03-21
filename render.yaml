@@ -5,8 +5,10 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
-    healthCheckPath: /
+    healthCheckPath: /_stcore/health
     autoDeploy: true
+    domains:
+      - matrikayogaacademy.com
     envVars:
       - key: GOOGLE_SHEET_ID
         sync: false

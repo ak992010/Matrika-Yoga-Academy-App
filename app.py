@@ -46,6 +46,8 @@ SMTP_PASSWORD_SECRET = "smtp_password"
 SMTP_FROM_EMAIL_SECRET = "smtp_from_email"
 SMTP_FROM_NAME_SECRET = "smtp_from_name"
 GOOGLE_SERVICE_ACCOUNT_FILE_ENV = "GOOGLE_SERVICE_ACCOUNT_FILE"
+PRIMARY_PUBLIC_DOMAIN = "matrikayogaacademy.com"
+_ENSURED_WORKSHEETS: set[str] = set()
 
 SUBMISSION_SCHEMAS = {
     "bookings.csv": {
@@ -655,12 +657,20 @@ def get_google_spreadsheet():
     else:
         service_account_info = parse_service_account_secret(str(raw_secret))
 
+    return get_google_spreadsheet_cached(json.dumps(service_account_info, sort_keys=True), str(sheet_id))
+
+
+@st.cache_resource(show_spinner=False)
+def get_google_spreadsheet_cached(service_account_json: str, sheet_id: str):
+    import gspread
+    from google.oauth2.service_account import Credentials
+
     credentials = Credentials.from_service_account_info(
-        service_account_info,
+        json.loads(service_account_json),
         scopes=list(GOOGLE_SHEETS_SCOPE),
     )
     client = gspread.authorize(credentials)
-    return client.open_by_key(str(sheet_id))
+    return client.open_by_key(sheet_id)
 
 
 def parse_service_account_secret(raw_secret: str) -> dict:
@@ -702,8 +712,9 @@ def ensure_google_worksheet(csv_name: str, row: dict | None = None):
             cols=max(20, len(headers) + 2),
         )
 
-    if headers and worksheet.row_values(1) != headers:
+    if headers and worksheet_name not in _ENSURED_WORKSHEETS and worksheet.row_values(1) != headers:
         worksheet.update("A1", [headers], value_input_option="RAW")
+    _ENSURED_WORKSHEETS.add(worksheet_name)
     return worksheet
 
 
@@ -810,7 +821,6 @@ def append_row_to_google_sheet(csv_name: str, row: dict) -> bool:
     if not headers:
         headers = list(row.keys())
     worksheet.append_row([str(row.get(key, "")) for key in headers], value_input_option="RAW")
-    update_google_overview_row(csv_name, str(row.get("submitted_at", "")), worksheet=worksheet)
     return True
 
 
