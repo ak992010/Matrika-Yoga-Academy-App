@@ -1,0 +1,69 @@
+{
+  "captured_at": "2026-03-22",
+  "event_slug": "apac-genaiacademy",
+  "event_name": "Gen AI Academy APAC Edition",
+  "artifacts": {
+    "projects": {
+      "track1": {
+        "title": "Track 1 - Build and Deploy AI Agents",
+        "workspace": "/Users/abhinavkashyappeddamandadi/Documents/apac_genaiacademy_projects/track1_adk_cloud_run",
+        "zip": "/Users/abhinavkashyappeddamandadi/Documents/apac_genaiacademy_projects/dist/track1_adk_cloud_run.zip",
+        "pdf": "/Users/abhinavkashyappeddamandadi/Documents/apac_genaiacademy_projects/submission_artifacts/pdf/track1_final_project_ppt.pdf",
+        "submission_module_id": "696f5d629528e49764887ef0",
+        "problem_statement_id": "6970a3518a441b6a11a3dd87",
+        "questions": {
+          "cloud_run_link": "69a028a181b8c8285758f674",
+          "final_project_ppt": "69a028a181b8c8285758f677"
+        }
+      },
+      "track2": {
+        "title": "Track 2 - Connect AI Agents to Real-World Data",
+        "workspace": "/Users/abhinavkashyappeddamandadi/Documents/apac_genaiacademy_projects/track2_adk_mcp_weather",
+        "zip": "/Users/abhinavkashyappeddamandadi/Documents/apac_genaiacademy_projects/dist/track2_adk_mcp_weather.zip",
+        "pdf": "/Users/abhinavkashyappeddamandadi/Documents/apac_genaiacademy_projects/submission_artifacts/pdf/track2_final_project_ppt.pdf",
+        "submission_module_id": "6970606a8a441b6a117117e5",
+        "problem_statement_id": "6970a3c78a441b6a11a43216",
+        "questions": {
+          "cloud_run_link": "69a028f681b8c82857590a55",
+          "final_project_ppt": "69a028f681b8c82857590a58"
+        }
+      },
+      "track3": {
+        "title": "Track 3 - Build and Migrate faster with AI-Ready Databases",
+        "workspace": "/Users/abhinavkashyappeddamandadi/Documents/apac_genaiacademy_projects/track3_alloydb_nl_query",
+        "zip": "/Users/abhinavkashyappeddamandadi/Documents/apac_genaiacademy_projects/dist/track3_alloydb_nl_query.zip",
+        "pdf": "/Users/abhinavkashyappeddamandadi/Documents/apac_genaiacademy_projects/submission_artifacts/pdf/track3_final_project_ppt.pdf",
+        "submission_module_id": "6970613aee96e41f19bba455",
+        "problem_statement_id": "6970a43f8a441b6a11a49d74",
+        "questions": {
+          "cloud_run_link": "69a0295281b8c82857592220",
+          "final_project_ppt": "69a0295281b8c82857592223"
+        }
+      }
+    },
+    "forms": {
+      "google_skills_public_profile": {
+        "module_id": "6985c3c9259efba28180a317",
+        "questions": {
+          "email": "6985c43950e1d8243c782ef0",
+          "profile_link": "6985c43950e1d8243c782ef1"
+        }
+      },
+      "google_skills_lab_submission": {
+        "module_id": "698d990b3e00202b5c0c6edf",
+        "questions": {
+          "screenshot": "698d9a3d5c62671c5ac3ad3b"
+        }
+      }
+    }
+  },
+  "missing_external_inputs": [
+    "google_skills_public_profile_url",
+    "google_skills_lab_progress_screenshot",
+    "track1_cloud_run_url",
+    "track2_cloud_run_url",
+    "track3_cloud_run_url_or_public_endpoint",
+    "gemini_credentials_or_vertex_ai_access",
+    "alloydb_database_url_for_live_track3"
+  ]
+}
