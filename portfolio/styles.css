@@ -170,6 +170,21 @@ img {
   font-weight: 700;
 }
 
+.role-note {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 1rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgba(147, 173, 107, 0.28);
+  border-radius: 999px;
+  background: rgba(147, 173, 107, 0.12);
+  color: #55663c;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 h1,
 h2,
 h3 {
