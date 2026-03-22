@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="description"
+    content="Portfolio of Abhinav Kashyap Peddamandadi featuring the Matrika Academy app and AI projects built in the current workspace."
+  >
+  <title>Abhinav Kashyap Peddamandadi | Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Go to top">AKP</a>
+      <nav class="topnav" aria-label="Primary">
+        <a href="#matrika">Matrika</a>
+        <a href="#projects">AI projects</a>
+        <a href="#artifacts">Artifacts</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Portfolio / Product + AI Systems</p>
+          <h1>Abhinav Kashyap Peddamandadi</h1>
+          <p class="lede">
+            I build calm product experiences and practical AI systems. This portfolio brings together
+            my flagship <span class="inline-code">Matrika Academy</span> work and the Google GenAI
+            projects completed in my current workspace.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#matrika">Explore Matrika</a>
+            <a class="button button-secondary" href="#projects">View AI projects</a>
+          </div>
+        </div>
+
+        <aside class="hero-panel" aria-label="Quick summary">
+          <p class="panel-label">Focus</p>
+          <p class="panel-text">
+            Product UX, Streamlit platforms, SEO wrappers, Google ADK, MCP, BigQuery, Cloud Run, and
+            AlloyDB-backed natural language workflows.
+          </p>
+          <div class="metric-grid">
+            <div class="metric-card">
+              <strong>7</strong>
+              <span>selected builds in this portfolio</span>
+            </div>
+            <div class="metric-card">
+              <strong>11</strong>
+              <span>Matrika app pages including admin</span>
+            </div>
+            <div class="metric-card">
+              <strong>5</strong>
+              <span>GenAI module projects</span>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="flagship" id="matrika">
+        <div class="section-header">
+          <p class="section-kicker">Flagship product</p>
+          <h2>Matrika Academy App in full detail.</h2>
+          <p>
+            A full academy platform rebuilt in Streamlit for learners, parents, and administrators,
+            with an SEO-friendly public wrapper and a matching Android WebView app.
+          </p>
+        </div>
+
+        <div class="flagship-grid">
+          <article class="feature-panel">
+            <div class="card-header">
+              <span class="project-type project-type-featured">Flagship Product</span>
+              <span class="project-stack">Streamlit / FastAPI / Render / Android</span>
+            </div>
+            <h3>Matrika Academy</h3>
+            <p>
+              This app brings the whole academy journey into one calm flow: discovery, account
+              creation, admissions, live class access, replay follow-up, payments, contact, and
+              protected admin review.
+            </p>
+            <ul class="project-points">
+              <li><span>11 pages: Dashboard, Account, Programs, Schedule, Admissions, Live Studio, Certification, Kids Studio, Payments, Contact, and Admin.</span></li>
+              <li><span>10 persisted data tables covering bookings, attendance, certification, kids enquiries, payments, contact, user accounts, password resets, reply logs, and Razorpay links.</span></li>
+              <li><span>Dual storage model with Google Sheets for cloud persistence and local CSV fallback for development.</span></li>
+              <li><span>Automatic email replies, password reset verification, WhatsApp support paths, live Zoom joining, replay requests, and account-linked payment flows.</span></li>
+              <li><span>SEO wrapper with landing page, JSON-LD, `robots.txt`, `sitemap.xml`, and `/app` routing for a cleaner public domain experience.</span></li>
+            </ul>
+            <div class="link-row">
+              <a href="portfolio_public_assets/readmes/matrika_yoga_app.md" target="_blank" rel="noreferrer">Product README</a>
+              <a href="portfolio_public_assets/snippets/matrika_seo_server.py" target="_blank" rel="noreferrer">SEO wrapper</a>
+              <a href="portfolio_public_assets/readmes/matrika_yoga_android_v2.md" target="_blank" rel="noreferrer">Android wrapper</a>
+            </div>
+          </article>
+
+          <aside class="matrika-metrics">
+            <div class="metric-tile">
+              <span class="metric-label">Learner flow</span>
+              <strong>Account to payment</strong>
+              <p>Admissions, attendance, contact, payment proofs, and secure Razorpay links stay tied to one learner profile.</p>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">Operations</span>
+              <strong>Admin-ready review</strong>
+              <p>Protected admin access shows storage health, counts by source, recent rows, spreadsheet links, and CSV downloads.</p>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">Delivery</span>
+              <strong>Web + SEO + Android</strong>
+              <p>The academy can be served from a public landing page, a Streamlit app shell, and an Android WebView release URL.</p>
+            </div>
+          </aside>
+        </div>
+
+        <div class="detail-grid">
+          <article class="detail-card">
+            <p class="section-kicker">Page system</p>
+            <h3>Every core academy path is covered.</h3>
+            <p>
+              The app is structured as a complete learner product, not just a form hub. Visitors can
+              browse programs and schedules, then move into account-backed admissions, live studio,
+              certification, kids enquiries, payments, and support.
+            </p>
+            <ul class="project-points">
+              <li><span>Programs include Garbhasanskara Flow, Prenatal + Postnatal Care, Kids Yoga Studio, Teacher Certification, and Everyday Wellness.</span></li>
+              <li><span>Schedule guidance includes morning, afternoon, evening, weekend, and flexible time-period options.</span></li>
+              <li><span>Live Studio combines live links, replay support, and attendance in a single class experience.</span></li>
+            </ul>
+          </article>
+
+          <article class="detail-card">
+            <p class="section-kicker">Payments + support</p>
+            <h3>Modern checkout with fallback paths.</h3>
+            <p>
+              The payments page supports both a premium hosted flow and the academy’s older manual
+              process, so learners can pay in the way that feels easiest.
+            </p>
+            <ul class="project-points">
+              <li><span>Hosted Razorpay payment links can be generated per learner and tracked in the admin data.</span></li>
+              <li><span>Manual UPI fallback stays available with provider shortcuts for Google Pay, PhonePe, Paytm, BHIM, Amazon Pay, and other UPI apps.</span></li>
+              <li><span>Payment proofs, transaction references, and follow-up confirmations remain tied to the signed-in account.</span></li>
+            </ul>
+          </article>
+
+          <article class="detail-card">
+            <p class="section-kicker">Growth + deployment</p>
+            <h3>Built to be shared publicly.</h3>
+            <p>
+              The project is ready for Render or Streamlit Community Cloud, and it also includes an
+              Android wrapper for a lightweight mobile app release.
+            </p>
+            <ul class="project-points">
+              <li><span>`seo_server.py` serves a crawlable public landing page at `/`, then routes the Streamlit app under `/app`.</span></li>
+              <li><span>The public domain configuration points at `matrikayogaacademy.com` with SEO metadata, FAQ schema, favicon, and sitemap support.</span></li>
+              <li><span>The Android wrapper loads the local Streamlit server in debug and a production HTTPS URL in release builds.</span></li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="accordion-grid">
+          <details class="detail-accordion" open>
+            <summary>Detailed page map</summary>
+            <p>
+              Dashboard gives the academy overview, Account handles sign up and login, Programs and
+              Schedule explain the offering, Admissions captures enrollment requests, Live Studio
+              manages live class access and attendance, Certification and Kids Studio run focused
+              forms, Payments handles Razorpay and UPI flows, Contact manages support, and Admin is
+              a password-protected operations surface.
+            </p>
+          </details>
+
+          <details class="detail-accordion">
+            <summary>Data model and integrations</summary>
+            <p>
+              Saved datasets cover admissions bookings, attendance, certification applications, kids
+              enquiries, payments, contact messages, user accounts, password reset requests,
+              automatic reply logs, and Razorpay links. Integrations include Google Sheets, SMTP
+              email delivery, Razorpay APIs, WhatsApp sharing, Zoom joining, and account-linked UPI
+              shortcuts.
+            </p>
+          </details>
+
+          <details class="detail-accordion">
+            <summary>Hosting and admin workflow</summary>
+            <p>
+              Render uses `uvicorn seo_server:app` with `APP_BASE_PATH=/app`, while Streamlit
+              Community Cloud uses `app.py` plus secrets for Google Sheets, SMTP, admin password, and
+              Razorpay. Admin review shows storage mode, row counts, recent entries, spreadsheet
+              links when cloud persistence is active, and CSV exports for each workflow.
+            </p>
+          </details>
+        </div>
+
+        <div class="gallery-grid">
+          <figure class="gallery-card">
+            <img src="portfolio_public_assets/images/matrika_home_visitor_preview.png" alt="Matrika Academy visitor dashboard preview">
+            <figcaption>Visitor-first home experience with quick actions, account prompts, and academy overview.</figcaption>
+          </figure>
+          <figure class="gallery-card">
+            <img src="portfolio_public_assets/images/matrika_admissions_preview.png" alt="Matrika Academy admissions preview">
+            <figcaption>Admissions flow with account-aware enrollment requests and guided next steps.</figcaption>
+          </figure>
+          <figure class="gallery-card">
+            <img src="portfolio_public_assets/images/matrika_payments_preview.png" alt="Matrika Academy payments preview">
+            <figcaption>Payments page with Razorpay checkout, UPI fallback, proof submission, and account-linked billing.</figcaption>
+          </figure>
+          <figure class="gallery-card">
+            <img src="portfolio_public_assets/images/matrika_account_preview_v2.png" alt="Matrika Academy account preview">
+            <figcaption>Account area for learner identity, payment app linking, login, and password reset support.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="module-note">
+        <p class="section-kicker">GenAI module</p>
+        <div class="module-copy">
+          <h2>Google GenAI Academy builds from the current workspace.</h2>
+          <p>
+            Alongside the Matrika product work, this workspace contains five AI agent projects
+            spanning Google ADK, MCP, BigQuery, Maps tooling, Cloud Run, and AlloyDB.
+          </p>
+        </div>
+      </section>
+
+      <section class="section-header" id="projects">
+        <p class="section-kicker">Selected work</p>
+        <h2>AI projects completed in this workspace.</h2>
+      </section>
+
+      <section class="projects-grid">
+        <article class="project-card project-card-featured">
+          <div class="card-header">
+            <span class="project-type project-type-core">Core Track 1</span>
+            <span class="project-stack">Google ADK / Gemini / FastAPI / Cloud Run</span>
+          </div>
+          <h3>ADK Executive Summary Agent</h3>
+          <p>
+            A focused summarization service that turns raw notes into concise executive-ready output
+            with configurable tone and word limits.
+          </p>
+          <ul class="project-points">
+            <li><span>HTTP endpoints for health checks and summaries.</span></li>
+            <li><span>Built for local testing and Cloud Run deployment.</span></li>
+            <li><span>Packaged with Docker, environment examples, and submission assets.</span></li>
+          </ul>
+          <div class="link-row">
+            <a href="portfolio_public_assets/readmes/track1_adk_cloud_run.md" target="_blank" rel="noreferrer">README</a>
+            <a href="portfolio_public_assets/pdf/track1_final_project_ppt.pdf" target="_blank" rel="noreferrer">Deck</a>
+            <a href="portfolio_public_assets/bundles/track1_adk_cloud_run.zip" target="_blank" rel="noreferrer">Bundle</a>
+          </div>
+        </article>
+
+        <article class="project-card">
+          <div class="card-header">
+            <span class="project-type project-type-core">Core Track 2</span>
+            <span class="project-stack">ADK / MCP / Open-Meteo / FastAPI</span>
+          </div>
+          <h3>MCP Travel Weather Assistant</h3>
+          <p>
+            A travel-focused weather assistant that grounds every answer in live data fetched
+            through a custom MCP server.
+          </p>
+          <ul class="project-points">
+            <li><span>Custom stdio MCP server for city weather retrieval.</span></li>
+            <li><span>Agent reasoning separated cleanly from data access.</span></li>
+            <li><span>Prepared for Cloud Run and demo-friendly API usage.</span></li>
+          </ul>
+          <div class="link-row">
+            <a href="portfolio_public_assets/readmes/track2_adk_mcp_weather.md" target="_blank" rel="noreferrer">README</a>
+            <a href="portfolio_public_assets/snippets/track2_adk_mcp_weather_mcp_server.py" target="_blank" rel="noreferrer">MCP server</a>
+            <a href="portfolio_public_assets/bundles/track2_adk_mcp_weather.zip" target="_blank" rel="noreferrer">Bundle</a>
+          </div>
+        </article>
+
+        <article class="project-card">
+          <div class="card-header">
+            <span class="project-type project-type-extended">Extended Build</span>
+            <span class="project-stack">ADK / BigQuery MCP / Maps MCP / FastAPI</span>
+          </div>
+          <h3>Location Intelligence Agent</h3>
+          <p>
+            An advanced bakery site-selection workflow that combines structured business analysis in
+            BigQuery with real-world route and place checks from Google Maps MCP.
+          </p>
+          <ul class="project-points">
+            <li><span>Uses synthetic demo data shaped for realistic location decisions.</span></li>
+            <li><span>Includes setup scripts for environment and dataset provisioning.</span></li>
+            <li><span>Exposes a deployable API for guided business recommendations.</span></li>
+          </ul>
+          <div class="link-row">
+            <a href="portfolio_public_assets/readmes/track2_adk_mcp_location_intelligence.md" target="_blank" rel="noreferrer">README</a>
+            <a href="portfolio_public_assets/snippets/track2_adk_mcp_location_intelligence_api.py" target="_blank" rel="noreferrer">API</a>
+            <a href="portfolio_public_assets/snippets/track2_adk_mcp_location_intelligence_setup_bigquery.sh" target="_blank" rel="noreferrer">Setup</a>
+          </div>
+        </article>
+
+        <article class="project-card">
+          <div class="card-header">
+            <span class="project-type project-type-lab">Support Lab</span>
+            <span class="project-stack">MCP Toolbox / BigQuery / Google ADK</span>
+          </div>
+          <h3>BigQuery Release Notes Toolbox</h3>
+          <p>
+            A local codelab implementation that exposes Google Cloud release notes from BigQuery to
+            an ADK agent through MCP Toolbox for Databases.
+          </p>
+          <ul class="project-points">
+            <li><span>Maps a public dataset into an MCP-friendly toolset.</span></li>
+            <li><span>Uses a pinned Toolbox binary and HTTP-based agent integration.</span></li>
+            <li><span>Designed for fast local experimentation with release-note queries.</span></li>
+          </ul>
+          <div class="link-row">
+            <a href="portfolio_public_assets/readmes/track2_bigquery_mcp_toolbox.md" target="_blank" rel="noreferrer">README</a>
+            <a href="portfolio_public_assets/snippets/track2_bigquery_mcp_toolbox_tools.yaml" target="_blank" rel="noreferrer">Tool config</a>
+            <a href="portfolio_public_assets/snippets/track2_bigquery_mcp_toolbox_agent.py" target="_blank" rel="noreferrer">Agent</a>
+          </div>
+        </article>
+
+        <article class="project-card">
+          <div class="card-header">
+            <span class="project-type project-type-core">Core Track 3</span>
+            <span class="project-stack">AlloyDB / PostgreSQL / FastAPI / Vertex AI</span>
+          </div>
+          <h3>AlloyDB NL Support Tickets App</h3>
+          <p>
+            A natural-language query experience for a custom SaaS help desk dataset using AlloyDB
+            AI NL to generate SQL and return meaningful ticket insights.
+          </p>
+          <ul class="project-points">
+            <li><span>Custom schema for organizations and support tickets.</span></li>
+            <li><span>SQL setup scripts prepare schema, seed data, and NL configuration.</span></li>
+            <li><span>Ready for local API testing and later database-backed deployment.</span></li>
+          </ul>
+          <div class="link-row">
+            <a href="portfolio_public_assets/readmes/track3_alloydb_nl_query.md" target="_blank" rel="noreferrer">README</a>
+            <a href="portfolio_public_assets/pdf/track3_final_project_ppt.pdf" target="_blank" rel="noreferrer">Deck</a>
+            <a href="portfolio_public_assets/bundles/track3_alloydb_nl_query.zip" target="_blank" rel="noreferrer">Bundle</a>
+          </div>
+        </article>
+      </section>
+
+      <section class="resource-strip" id="artifacts">
+        <div>
+          <p class="section-kicker">Supporting material</p>
+          <h2>Notes, manifests, and module assets.</h2>
+          <p>
+            The portfolio also links to the ADK foundation note, the captured submission manifest,
+            and the combined module bundle for easier sharing.
+          </p>
+        </div>
+        <div class="resource-links">
+          <a href="portfolio_public_assets/notes/building-ai-agents-with-adk-the-foundation.md" target="_blank" rel="noreferrer">
+            Read the ADK foundation note
+          </a>
+          <a href="portfolio_public_assets/manifest.json" target="_blank" rel="noreferrer">
+            Open the artifact manifest
+          </a>
+          <a href="portfolio_public_assets/bundles/submission_ready_bundle.zip" target="_blank" rel="noreferrer">
+            Download module bundle
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Built as a clean portfolio over the current workspace, with a detailed Matrika Academy case study.</p>
+      <a href="#top">Back to top</a>
+    </footer>
+  </div>
+</body>
+</html>

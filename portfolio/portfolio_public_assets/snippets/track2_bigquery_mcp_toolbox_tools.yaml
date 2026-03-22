@@ -1,0 +1,28 @@
+kind: sources
+name: my-bigquery-source
+type: bigquery
+project: ${GOOGLE_CLOUD_PROJECT}
+location: ${BIGQUERY_LOCATION:US}
+allowedDatasets:
+  - bigquery-public-data.google_cloud_release_notes
+maxQueryResultRows: 50
+---
+kind: tools
+name: search_release_notes_bq
+type: bigquery-sql
+source: my-bigquery-source
+description: Use this tool to get Google Cloud release notes published in the last 7 days.
+statement: |
+  SELECT
+    product_name,
+    description,
+    published_at
+  FROM `bigquery-public-data.google_cloud_release_notes.release_notes`
+  WHERE DATE(published_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+  ORDER BY published_at DESC
+  LIMIT 50
+---
+kind: toolsets
+name: my_bq_toolset
+tools:
+  - search_release_notes_bq
