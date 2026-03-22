@@ -10,6 +10,7 @@ What it includes
 - Admin page for reviewing saved entries after password unlock
 - Live Studio page for links, replays, and attendance tracking
 - Optional logo support via `assets/matrika_logo.svg`
+- SEO landing page, `robots.txt`, and `sitemap.xml` support through `seo_server.py`
 
 Run it
 ```bash
@@ -19,6 +20,19 @@ source .venv/bin/activate
 pip install -r requirements.txt
 streamlit run app.py
 ```
+
+Run the SEO wrapper locally
+```bash
+cd /Users/abhinavkashyappeddamandadi/Documents/matrika_yoga_app
+source .venv/bin/activate
+APP_BASE_PATH=/app uvicorn seo_server:app --host 0.0.0.0 --port 8501
+```
+
+That local wrapper gives you:
+- `/` as a crawlable academy landing page
+- `/robots.txt`
+- `/sitemap.xml`
+- `/app` as the Streamlit academy app
 
 Data from the forms is written into `submissions/` locally. On Streamlit Community Cloud, add Google Sheets secrets so submissions persist across restarts.
 
@@ -39,6 +53,7 @@ Deploy to Render
    - `RAZORPAY_KEY_SECRET`
 4. After the first deploy, add your custom domain in Render and point your registrar DNS records to the values Render shows.
 5. Redirect your secondary domain to the primary domain after HTTPS is active.
+6. The Render service now serves an SEO-friendly landing page at `/` and the Streamlit app at `/app`, which is much better for Google indexing than exposing only the Streamlit shell.
 
 Deploy to Streamlit Community Cloud
 1. Push this folder to a GitHub repository.

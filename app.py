@@ -37,7 +37,8 @@ PAYMENT_UPI_ID = "pdr14@ybl"
 PAYMENT_UPI_URL = f"upi://pay?pa={PAYMENT_UPI_ID}&pn=Matrika%20Academy&cu=INR"
 CONTACT_PHONE = "7893939545"
 CONTACT_EMAIL = "drpeddamandadi@gmail.com"
-HOME_HREF = "/"
+APP_BASE_PATH = os.getenv("APP_BASE_PATH", "/").rstrip("/") or "/"
+HOME_HREF = APP_BASE_PATH
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://matrikayogaacademy.com").rstrip("/")
 PUBLIC_SITE_HOST = re.sub(r"^https?://", "", PUBLIC_SITE_URL).rstrip("/")
 RAZORPAY_API_BASE_URL = "https://api.razorpay.com"
@@ -56,15 +57,15 @@ SMTP_FROM_EMAIL_SECRET = "smtp_from_email"
 SMTP_FROM_NAME_SECRET = "smtp_from_name"
 GOOGLE_SERVICE_ACCOUNT_FILE_ENV = "GOOGLE_SERVICE_ACCOUNT_FILE"
 PRIMARY_PUBLIC_DOMAIN = "matrikayogaacademy.com"
-LEARNER_PASSWORD_MIN_LENGTH = 8
+LEARNER_PASSWORD_MIN_LENGTH = 12
 USER_ACCOUNTS_CSV = "user_accounts.csv"
 AUTOMATED_REPLY_LOG_CSV = "reply_automation_logs.csv"
 PASSWORD_RESET_REQUESTS_CSV = "password_reset_requests.csv"
 RAZORPAY_LINKS_CSV = "razorpay_links.csv"
 PAGE_WIDGET_KEY = "page_selector"
 _ENSURED_WORKSHEETS: set[str] = set()
-PASSWORD_RESET_CODE_LENGTH = 6
-PASSWORD_RESET_TTL_MINUTES = 15
+PASSWORD_RESET_CODE_LENGTH = 4
+PASSWORD_RESET_TTL_MINUTES = 60
 RAZORPAY_KEY_ID_SECRET = "razorpay_key_id"
 RAZORPAY_KEY_SECRET_SECRET = "razorpay_key_secret"
 RAZORPAY_CURRENCY = "INR"
@@ -615,6 +616,68 @@ PAYMENT_PLANS = [
         "meta": ["INR 24,000", "Certification", "Mentorship"],
     },
 ]
+
+LEARNING_STYLE_OPTIONS = [
+    "Live",
+    "Replay",
+    "Hybrid",
+]
+
+JOURNEY_STATE_KEY = "journey_need"
+JOURNEY_TIME_STATE_KEY = "journey_time_period"
+
+JOURNEY_PROFILES = {
+    "Pregnancy support": {
+        "program_title": "Garbhasanskara Flow",
+        "recommended_page": "Admissions",
+        "summary": "Begin with a gentle, trimester-aware path that balances breath work, mobility, and calmer emotional support.",
+        "next_step": "Best next step: request an admission seat so the academy can match you to a pregnancy-safe batch.",
+        "meta": ["Trimester-safe", "Live + replay", "Mentored"],
+        "track_keywords": ["Garbhasanskara", "Trimester", "Prenatal"],
+        "related_programs": ["Garbhasanskara Flow", "Prenatal + Postnatal Care"],
+        "cta_label": "Book this path",
+    },
+    "Postnatal recovery": {
+        "program_title": "Prenatal + Postnatal Care",
+        "recommended_page": "Admissions",
+        "summary": "Choose the recovery-focused path if you want guided core support, breath steadiness, and a softer return to routine.",
+        "next_step": "Best next step: share your current recovery stage in admissions so the team can suggest the gentlest starting point.",
+        "meta": ["Healing support", "Small batch", "Flexible timing"],
+        "track_keywords": ["Postnatal", "Trimester", "Prenatal"],
+        "related_programs": ["Prenatal + Postnatal Care", "Everyday Wellness"],
+        "cta_label": "Request recovery guidance",
+    },
+    "Kids yoga": {
+        "program_title": "Kids Yoga Studio",
+        "recommended_page": "Kids Studio",
+        "summary": "This route keeps movement playful and focused, with child-friendly classes and parent follow-up built into the experience.",
+        "next_step": "Best next step: open the kids studio page and send a child enquiry with the preferred time period.",
+        "meta": ["Ages 5-14", "Play + calm", "Parent updates"],
+        "track_keywords": ["Kids Yoga"],
+        "related_programs": ["Kids Yoga Studio"],
+        "cta_label": "Open kids studio",
+    },
+    "Teacher training": {
+        "program_title": "Certification Path",
+        "recommended_page": "Certification",
+        "summary": "Move into the mentored certification journey if you want practice teaching, sequencing, and supervised feedback.",
+        "next_step": "Best next step: open certification and share your experience level so the cohort match feels intentional.",
+        "meta": ["Certificate", "Mentored", "Practicum"],
+        "track_keywords": ["Teacher Certification"],
+        "related_programs": ["Certification Path"],
+        "cta_label": "Open certification",
+    },
+    "Everyday wellness": {
+        "program_title": "Everyday Wellness",
+        "recommended_page": "Admissions",
+        "summary": "This is the calmest general entry point for learners who want breathable structure without needing a specialty track first.",
+        "next_step": "Best next step: request a trial so the academy can place you in a simple morning, evening, or weekend rhythm.",
+        "meta": ["Beginners", "Weekend friendly", "Replay access"],
+        "track_keywords": ["Prenatal Practice", "Postnatal Recovery", "Garbhasanskara"],
+        "related_programs": ["Everyday Wellness", "Garbhasanskara Flow"],
+        "cta_label": "Book a trial",
+    },
+}
 
 CONTACT_CARDS = [
     {
@@ -2103,6 +2166,14 @@ def jump_to(page: str) -> None:
     st.session_state.page = page
 
 
+def open_page_with_journey(page: str, need: str = "", time_period: str = "Flexible") -> None:
+    if need:
+        st.session_state[JOURNEY_STATE_KEY] = need
+    if time_period:
+        st.session_state[JOURNEY_TIME_STATE_KEY] = time_period
+    jump_to(page)
+
+
 def sync_page_from_navigation() -> None:
     selected_page = str(st.session_state.get(PAGE_WIDGET_KEY, PAGE_NAMES[0])).strip()
     if selected_page in PAGE_NAMES:
@@ -2205,6 +2276,221 @@ def send_user_home(
 def chips(items: list[str] | tuple[str, ...]) -> str:
     return "".join(f"<span class='meta-chip'>{esc(item)}</span>" for item in items)
 
+
+def journey_need_options() -> list[str]:
+    return list(JOURNEY_PROFILES.keys())
+
+
+def journey_profile(need: str) -> dict[str, object]:
+    profile = JOURNEY_PROFILES.get(need)
+    if profile:
+        return dict(profile)
+    fallback_need = journey_need_options()[0]
+    return dict(JOURNEY_PROFILES[fallback_need])
+
+
+def program_card_by_title(title: str) -> dict[str, object]:
+    for card in PROGRAM_CARDS:
+        if str(card.get("title", "")) == str(title):
+            return dict(card)
+    return {}
+
+
+def related_program_cards(need: str) -> list[dict[str, object]]:
+    profile = journey_profile(need)
+    titles = list(profile.get("related_programs", []))
+    cards = [program_card_by_title(title) for title in titles]
+    return [card for card in cards if card]
+
+
+def session_time_period(row: Mapping[str, object]) -> str:
+    day = str(row.get("Day", "")).strip().lower()
+    if day in {"sat", "sun"}:
+        return "Weekend"
+
+    time_text = str(row.get("Time", "")).strip().upper()
+    match = re.fullmatch(r"(\d{1,2}):(\d{2})\s*(AM|PM)", time_text)
+    if not match:
+        return "Flexible"
+
+    hour = int(match.group(1)) % 12
+    if match.group(3) == "PM":
+        hour += 12
+    if hour < 12:
+        return "Morning"
+    if hour < 17:
+        return "Afternoon"
+    return "Evening"
+
+
+def schedule_rows_for_need(
+    need: str | None = None,
+    *,
+    time_period: str = "Flexible",
+    track: str = "",
+) -> list[dict[str, str]]:
+    profile = journey_profile(need) if need else {}
+    keywords = [str(item).lower() for item in profile.get("track_keywords", [])]
+    selected_track = str(track).strip()
+    selected_period = str(time_period).strip() or "Flexible"
+    rows: list[dict[str, str]] = []
+
+    for row in WEEKLY_SCHEDULE:
+        row_copy = {str(key): str(value) for key, value in row.items()}
+        row_copy["Time period"] = session_time_period(row_copy)
+
+        if selected_period not in {"", "All periods", "Flexible"} and row_copy["Time period"] != selected_period:
+            continue
+        if selected_track and selected_track != "All tracks" and row_copy.get("Track") != selected_track:
+            continue
+        if keywords and not any(keyword in row_copy.get("Track", "").lower() for keyword in keywords):
+            continue
+
+        rows.append(row_copy)
+
+    return rows
+
+
+def schedule_card_items(rows: list[dict[str, str]], *, limit: int = 3) -> list[dict[str, object]]:
+    return [
+        {
+            "kicker": row.get("Day", "Session"),
+            "title": f'{row.get("Time", "")} · {row.get("Track", "")}',
+            "body": row.get("Focus", ""),
+            "meta": [row.get("Time period", ""), "IST"],
+        }
+        for row in rows[:limit]
+    ]
+
+
+def mode_support_copy(mode: str) -> str:
+    if mode == "Replay":
+        return "Replay-first learners can still use these live slots as anchor points and catch up later without stress."
+    if mode == "Hybrid":
+        return "Hybrid works well here because the learner can join live when possible and rely on replays on busier weeks."
+    return "This path suits learners who want to show up for the live rhythm and stay close to the class energy each week."
+
+
+def render_interactive_pathfinder(
+    section_key: str,
+    *,
+    eyebrow: str,
+    title: str,
+    body: str,
+    show_schedule_preview: bool = True,
+    show_related_programs: bool = False,
+) -> None:
+    render_section(eyebrow, title, body)
+    needs = journey_need_options()
+    stored_need = str(st.session_state.get(JOURNEY_STATE_KEY, needs[0]))
+    stored_time_period = str(st.session_state.get(JOURNEY_TIME_STATE_KEY, "Flexible"))
+    need_index = needs.index(stored_need) if stored_need in needs else 0
+    time_index = TIME_PERIOD_OPTIONS.index(stored_time_period) if stored_time_period in TIME_PERIOD_OPTIONS else len(TIME_PERIOD_OPTIONS) - 1
+
+    left, right = st.columns([0.95, 1.05])
+    with left:
+        selected_need = st.radio(
+            "Who is this path for?",
+            needs,
+            index=need_index,
+            key=f"{section_key}_journey_need",
+        )
+        selected_time_period = st.selectbox(
+            "Best time period",
+            TIME_PERIOD_OPTIONS,
+            index=time_index,
+            key=f"{section_key}_journey_time_period",
+        )
+        selected_mode = st.select_slider(
+            "Learning style",
+            options=LEARNING_STYLE_OPTIONS,
+            value="Hybrid",
+            key=f"{section_key}_journey_mode",
+        )
+
+    st.session_state[JOURNEY_STATE_KEY] = selected_need
+    st.session_state[JOURNEY_TIME_STATE_KEY] = selected_time_period
+
+    profile = journey_profile(selected_need)
+    matching_rows = schedule_rows_for_need(selected_need, time_period=selected_time_period)
+
+    with right:
+        render_card(
+            str(profile.get("program_title", "")),
+            str(profile.get("summary", "")),
+            kicker="Recommended path",
+            meta=[
+                selected_time_period,
+                selected_mode,
+                *list(profile.get("meta", []))[:2],
+            ],
+            class_name="feature-card",
+        )
+        st.caption(str(profile.get("next_step", "")))
+        st.info(mode_support_copy(selected_mode))
+        cta_cols = st.columns(2)
+        with cta_cols[0]:
+            st.button(
+                str(profile.get("cta_label", "Open next step")),
+                key=f"{section_key}_path_cta",
+                use_container_width=True,
+                on_click=open_page_with_journey,
+                args=(str(profile.get("recommended_page", "Programs")), selected_need, selected_time_period),
+            )
+        with cta_cols[1]:
+            st.button(
+                "See matching classes",
+                key=f"{section_key}_schedule_cta",
+                use_container_width=True,
+                on_click=open_page_with_journey,
+                args=("Schedule", selected_need, selected_time_period),
+            )
+
+    if show_schedule_preview:
+        if matching_rows:
+            render_card_grid(
+                schedule_card_items(matching_rows, limit=min(3, len(matching_rows))),
+                columns=min(3, len(matching_rows)),
+                class_name="schedule-card",
+            )
+        else:
+            st.info(
+                "No current live slot exactly matches that combination yet. Keep the same journey and try Flexible, or message the academy for a custom batch."
+            )
+
+    if show_related_programs:
+        cards = related_program_cards(selected_need)
+        if cards:
+            render_card_grid(cards, columns=min(3, len(cards)))
+
+
+def render_program_comparison() -> None:
+    render_section(
+        "Compare two paths",
+        "Put two academy journeys next to each other before you decide.",
+        "This makes it easier for families and first-time learners to compare the tone and outcome of each path without scrolling back and forth.",
+    )
+    options = [str(card.get("title", "")) for card in PROGRAM_CARDS]
+    left, right = st.columns(2)
+    default_right_index = 1 if len(options) > 1 else 0
+    with left:
+        left_program = st.selectbox("Program one", options, index=0, key="program_compare_left")
+    with right:
+        right_program = st.selectbox("Program two", options, index=default_right_index, key="program_compare_right")
+
+    compare_cols = st.columns(2)
+    for slot, selected_program in zip(compare_cols, [left_program, right_program]):
+        card = program_card_by_title(selected_program)
+        if not card:
+            continue
+        with slot:
+            render_card(
+                str(card.get("title", "")),
+                str(card.get("body", "")),
+                kicker=str(card.get("kicker", "")),
+                meta=list(card.get("meta", [])),
+                class_name="timeline-card",
+            )
 
 def apply_theme() -> None:
     buddha_background = buddha_background_data_uri()
@@ -3718,6 +4004,16 @@ def dashboard_page() -> None:
 
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
     render_metric_grid(HOME_STATS)
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+
+    render_interactive_pathfinder(
+        "dashboard",
+        eyebrow="Interactive guide",
+        title="Find your best Matrika path in a few taps.",
+        body="Choose who the journey is for, the best time period, and the learning style. The site will immediately suggest the best next step and matching live rhythm.",
+        show_schedule_preview=True,
+        show_related_programs=False,
+    )
 
     if not learner_authenticated():
         render_section(
@@ -4220,6 +4516,17 @@ def programs_page() -> None:
         "From pregnancy support to playful children's classes and mentoring for future teachers, the app keeps every path clear.",
     )
     render_illustration_panel("Programs")
+    render_interactive_pathfinder(
+        "programs",
+        eyebrow="Interactive fit finder",
+        title="Let the academy recommend the right program first.",
+        body="This finder keeps the browsing experience more interactive by turning interest into a suggested path, instead of making learners scan every card manually.",
+        show_schedule_preview=False,
+        show_related_programs=True,
+    )
+    st.divider()
+    render_program_comparison()
+    st.divider()
     render_card_grid(PROGRAM_CARDS, columns=3)
 
     st.divider()
@@ -4268,11 +4575,65 @@ def schedule_page() -> None:
     render_card_grid(SCHEDULE_HIGHLIGHTS, columns=3, class_name="schedule-card")
     st.divider()
 
+    need_options = ["All journeys"] + journey_need_options()
+    default_need = str(st.session_state.get(JOURNEY_STATE_KEY, ""))
+    need_index = need_options.index(default_need) if default_need in need_options else 0
+    time_options = ["All periods"] + TIME_PERIOD_OPTIONS
+    default_time = str(st.session_state.get(JOURNEY_TIME_STATE_KEY, ""))
+    time_index = time_options.index(default_time) if default_time in time_options else 0
+    track_options = ["All tracks"] + sorted({row["Track"] for row in WEEKLY_SCHEDULE})
+
+    render_section(
+        "Interactive schedule explorer",
+        "Filter the timetable by journey, time period, and track.",
+        "This turns the schedule into a calmer planning tool instead of a static timetable.",
+    )
+    filter_cols = st.columns(3)
+    with filter_cols[0]:
+        selected_need = st.selectbox("Journey", need_options, index=need_index, key="schedule_need_filter")
+    with filter_cols[1]:
+        selected_time = st.selectbox("Time period", time_options, index=time_index, key="schedule_time_filter")
+    with filter_cols[2]:
+        selected_track = st.selectbox("Track", track_options, key="schedule_track_filter")
+
+    active_need = None if selected_need == "All journeys" else selected_need
+    if active_need:
+        st.session_state[JOURNEY_STATE_KEY] = active_need
+    if selected_time != "All periods":
+        st.session_state[JOURNEY_TIME_STATE_KEY] = selected_time
+    filtered_rows = schedule_rows_for_need(
+        active_need,
+        time_period="Flexible" if selected_time == "All periods" else selected_time,
+        track="" if selected_track == "All tracks" else selected_track,
+    )
+
     left, right = st.columns([1.2, 0.8])
     with left:
-        render_section("Weekly timetable", "Current live slots at a glance.", "This view can be swapped for a richer calendar later.")
-        st.dataframe(WEEKLY_SCHEDULE, use_container_width=True, hide_index=True)
+        st.caption(f"{len(filtered_rows)} live slot(s) match this view.")
+        if filtered_rows:
+            st.dataframe(filtered_rows, use_container_width=True, hide_index=True)
+        else:
+            st.info("No current live slot matches that exact filter combination yet. The full timetable is still shown below for context.")
+            st.dataframe(WEEKLY_SCHEDULE, use_container_width=True, hide_index=True)
     with right:
+        if active_need:
+            profile = journey_profile(active_need)
+            render_card(
+                str(profile.get("program_title", "")),
+                str(profile.get("next_step", "")),
+                kicker="Suggested next step",
+                meta=[selected_time, str(profile.get("recommended_page", ""))],
+                class_name="info-card",
+            )
+            st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
+            st.button(
+                str(profile.get("cta_label", "Open next step")),
+                key="schedule_recommended_cta",
+                use_container_width=True,
+                on_click=open_page_with_journey,
+                args=(str(profile.get("recommended_page", "Programs")), active_need, "Flexible" if selected_time == "All periods" else selected_time),
+            )
+            st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
         render_card(
             "Replay support",
             "Missed a class? The replay library keeps the learning moving without adding stress.",

@@ -4,12 +4,14 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
-    healthCheckPath: /_stcore/health
+    startCommand: uvicorn seo_server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
     autoDeploy: true
     domains:
       - matrikayogaacademy.com
     envVars:
+      - key: APP_BASE_PATH
+        value: /app
       - key: GOOGLE_SHEET_ID
         sync: false
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
