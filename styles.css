@@ -101,18 +101,41 @@ img {
 .brand {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
+  gap: 0.75rem;
+  justify-content: flex-start;
+  min-height: 3.5rem;
+  padding: 0.3rem 0.45rem 0.3rem 0.3rem;
   border: 1px solid rgba(35, 31, 27, 0.08);
   border-radius: 999px;
   background:
     linear-gradient(135deg, rgba(147, 173, 107, 0.24), rgba(14, 92, 87, 0.12)),
     rgba(255, 255, 255, 0.6);
-  font-size: 0.95rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
   box-shadow: 0 10px 24px rgba(35, 31, 27, 0.12);
+}
+
+.brand img {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.brand-copy {
+  display: grid;
+  line-height: 1.05;
+}
+
+.brand-copy strong {
+  font-size: 0.96rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.brand-copy small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .topnav {
@@ -193,6 +216,43 @@ img {
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.14em;
+}
+
+.logo-debut {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.75rem 0.55rem 0.55rem;
+  border: 1px solid rgba(35, 31, 27, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 12px 30px rgba(35, 31, 27, 0.08);
+}
+
+.logo-debut img {
+  width: 3.3rem;
+  height: 3.3rem;
+  flex: 0 0 auto;
+}
+
+.logo-debut-label,
+.logo-debut-name {
+  margin: 0;
+}
+
+.logo-debut-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.logo-debut-name {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  line-height: 1.1;
 }
 
 .eyebrow,
@@ -926,6 +986,10 @@ h1 {
   .module-note,
   .resource-strip {
     padding: 1.2rem;
+  }
+
+  .brand {
+    width: 100%;
   }
 
   .feature-panel h3,
