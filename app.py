@@ -66,6 +66,7 @@ PAGE_WIDGET_KEY = "page_selector"
 _ENSURED_WORKSHEETS: set[str] = set()
 PASSWORD_RESET_CODE_LENGTH = 4
 PASSWORD_RESET_TTL_MINUTES = 60
+SUBMISSION_CACHE_TTL_SECONDS = 45
 RAZORPAY_KEY_ID_SECRET = "razorpay_key_id"
 RAZORPAY_KEY_SECRET_SECRET = "razorpay_key_secret"
 RAZORPAY_CURRENCY = "INR"
@@ -1719,16 +1720,36 @@ def write_local_rows(csv_name: str, rows: list[dict[str, object]]) -> None:
             writer.writerow({key: row.get(key, "") for key in headers})
 
 
-def load_submission_rows(csv_name: str) -> list[dict[str, str]]:
+def local_rows_signature(csv_name: str) -> str:
+    file_path = DATA_DIR / csv_name
+    if not file_path.exists():
+        return "missing"
+    stat = file_path.stat()
+    return f"{stat.st_mtime_ns}:{stat.st_size}"
+
+
+@st.cache_data(show_spinner=False, ttl=SUBMISSION_CACHE_TTL_SECONDS)
+def load_submission_rows_cached(csv_name: str, signature: str, google_enabled: bool) -> list[dict[str, str]]:
+    del signature
+
     local_rows = read_local_rows(csv_name)
     if local_rows:
         return local_rows
 
-    google_rows = read_google_rows(csv_name)
-    if google_rows:
-        write_local_rows(csv_name, google_rows)
-        return google_rows
+    if google_enabled:
+        google_rows = read_google_rows(csv_name)
+        if google_rows:
+            write_local_rows(csv_name, google_rows)
+            return google_rows
     return []
+
+
+def load_submission_rows(csv_name: str) -> list[dict[str, str]]:
+    return load_submission_rows_cached(
+        csv_name,
+        local_rows_signature(csv_name),
+        google_persistence_enabled(),
+    )
 
 
 def storage_status_lines() -> list[str]:

@@ -64,7 +64,11 @@ def site_host() -> str:
 
 
 def academy_app_url() -> str:
-    return f"{PUBLIC_SITE_URL}{APP_BASE_PATH}"
+    return f"{PUBLIC_SITE_URL}{APP_BASE_PATH}/"
+
+
+def academy_shell_url() -> str:
+    return f"{PUBLIC_SITE_URL}/academy"
 
 
 def json_ld_payload() -> str:
@@ -86,7 +90,7 @@ def json_ld_payload() -> str:
             "url": PUBLIC_SITE_URL,
             "potentialAction": {
                 "@type": "SearchAction",
-                "target": f"{academy_app_url()}",
+                "target": f"{academy_shell_url()}",
                 "query-input": "required name=academy_path",
             },
         },
@@ -107,6 +111,130 @@ def json_ld_payload() -> str:
         },
     ]
     return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def academy_shell_html() -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Opening Matrika Academy</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      :root {{
+        --bg: #f5f8ef;
+        --bg-soft: #e4eed9;
+        --ink: #203629;
+        --muted: #5f7666;
+        --pista: #a7c97a;
+        --forest: #4c6d3f;
+        --line: rgba(76, 109, 63, 0.14);
+      }}
+      * {{ box-sizing: border-box; }}
+      body {{
+        margin: 0;
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(167, 201, 122, 0.20), transparent 32%),
+          linear-gradient(160deg, var(--bg), #fbfff6 48%, var(--bg-soft));
+      }}
+      .loader {{
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: rgba(245, 248, 239, 0.96);
+        z-index: 20;
+        transition: opacity .35s ease, visibility .35s ease;
+      }}
+      .loader.hidden {{
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }}
+      .card {{
+        width: min(92vw, 460px);
+        border-radius: 28px;
+        border: 1px solid var(--line);
+        background: rgba(255,255,255,0.8);
+        padding: 1.4rem;
+        text-align: center;
+        box-shadow: 0 24px 60px rgba(60,92,47,0.14);
+      }}
+      .card img {{
+        width: 72px;
+        height: 72px;
+        border-radius: 22px;
+      }}
+      .spinner {{
+        width: 60px;
+        height: 60px;
+        margin: 1rem auto 0;
+        border-radius: 999px;
+        border: 5px solid rgba(167, 201, 122, 0.22);
+        border-top-color: var(--forest);
+        animation: spin .9s linear infinite;
+      }}
+      .copy {{
+        color: var(--muted);
+        line-height: 1.7;
+      }}
+      iframe {{
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: var(--bg);
+      }}
+      .fallback {{
+        margin-top: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.8rem 1rem;
+        border-radius: 999px;
+        text-decoration: none;
+        color: var(--ink);
+        border: 1px solid var(--line);
+        background: rgba(255,255,255,0.75);
+      }}
+      @keyframes spin {{
+        from {{ transform: rotate(0deg); }}
+        to {{ transform: rotate(360deg); }}
+      }}
+    </style>
+  </head>
+  <body>
+    <div class="loader" id="loader">
+      <div class="card">
+        <img src="{PUBLIC_SITE_URL}/assets/matrika_logo.svg" alt="Matrika Academy logo" />
+        <h1>Opening Matrika Academy</h1>
+        <p class="copy">
+          The academy space is loading. We are keeping the experience calm and branded here so you do not have
+          to wait on the default Streamlit skeleton screen.
+        </p>
+        <div class="spinner" aria-hidden="true"></div>
+        <a class="fallback" href="{academy_app_url()}" target="_self">Open the app directly</a>
+      </div>
+    </div>
+    <iframe src="{academy_app_url()}" title="Matrika Academy app" onload="document.getElementById('loader').classList.add('hidden')"></iframe>
+    <script>
+      window.setTimeout(function () {{
+        var loader = document.getElementById('loader');
+        if (loader) {{
+          loader.querySelector('.copy').textContent =
+            'The academy is still warming up. This can happen on the free hosting plan after inactivity, but the app should appear shortly.';
+        }}
+      }}, 8000);
+    </script>
+  </body>
+</html>
+"""
 
 
 def landing_page_html() -> str:
@@ -354,7 +482,7 @@ def landing_page_html() -> str:
           </div>
         </a>
         <nav class="actions" aria-label="Primary">
-          <a class="button" href="{academy_app_url()}">Open Academy App</a>
+          <a class="button" href="{academy_shell_url()}">Open Academy App</a>
           <a class="button secondary" href="{LIVE_ZOOM_URL}">Join Live Class</a>
         </nav>
       </header>
@@ -368,7 +496,7 @@ def landing_page_html() -> str:
           website and continue into the full academy app when they are ready.
         </p>
         <div class="actions" style="margin-top:1rem;">
-          <a class="button" href="{academy_app_url()}">Start with the academy app</a>
+          <a class="button" href="{academy_shell_url()}">Start with the academy app</a>
           <a class="button secondary" href="mailto:{CONTACT_EMAIL}">Email the academy</a>
           <a class="button secondary" href="tel:{CONTACT_PHONE}">Call {CONTACT_PHONE}</a>
         </div>
@@ -400,7 +528,7 @@ def landing_page_html() -> str:
               follow-up in one place. That gives search visitors a clean next step after they find the site.
             </p>
             <div class="actions" style="margin-top:0.8rem;">
-              <a class="button" href="{academy_app_url()}">Enter the app</a>
+              <a class="button" href="{academy_shell_url()}">Enter the app</a>
             </div>
           </div>
         </div>
@@ -423,7 +551,7 @@ def landing_page_html() -> str:
           <div class="info-card">
             <h3>Quick actions</h3>
             <div class="actions">
-              <a class="button" href="{academy_app_url()}">Open academy app</a>
+              <a class="button" href="{academy_shell_url()}">Open academy app</a>
               <a class="button secondary" href="{WHATSAPP_URL}">WhatsApp the academy</a>
             </div>
           </div>
@@ -431,7 +559,7 @@ def landing_page_html() -> str:
       </section>
 
       <p class="footer">
-        Public website: {esc(site_host())} · Academy app: {esc(academy_app_url())}
+        Public website: {esc(site_host())} · Academy app: {esc(academy_shell_url())}
       </p>
     </main>
   </body>
@@ -467,6 +595,10 @@ def start_streamlit_process() -> subprocess.Popen[str]:
         "true",
         "--server.baseUrlPath",
         APP_BASE_SEGMENT,
+        "--server.fileWatcherType",
+        "none",
+        "--browser.gatherUsageStats",
+        "false",
     ]
     return subprocess.Popen(
         command,
@@ -498,6 +630,11 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/", response_class=HTMLResponse)
 async def landing_page() -> HTMLResponse:
     return HTMLResponse(landing_page_html())
+
+
+@app.get("/academy", response_class=HTMLResponse)
+async def academy_shell() -> HTMLResponse:
+    return HTMLResponse(academy_shell_html(), headers={"x-robots-tag": "noindex, nofollow"})
 
 
 @app.get("/healthz")
