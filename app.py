@@ -792,7 +792,7 @@ st.set_page_config(
     page_title="Matrika Academy",
     page_icon="🪷",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 
@@ -2780,6 +2780,11 @@ def apply_theme() -> None:
             background: transparent;
         }
 
+        [data-testid="stSidebar"],
+        [data-testid="stSidebarCollapsedControl"] {
+            display: none !important;
+        }
+
         #MainMenu,
         footer {
             visibility: hidden;
@@ -2788,6 +2793,7 @@ def apply_theme() -> None:
         .block-container {
             padding-top: 1rem;
             padding-bottom: 2.25rem;
+            max-width: min(1240px, 96vw);
         }
 
         h1,
@@ -2971,6 +2977,37 @@ def apply_theme() -> None:
         .site-chip {
             background: linear-gradient(135deg, rgba(214, 230, 191, 0.92), rgba(167, 201, 122, 0.36)) !important;
             border-color: rgba(127, 169, 86, 0.3) !important;
+        }
+
+        .topnav-panel {
+            padding: 1rem 1.05rem;
+            margin-bottom: 0.9rem;
+            border-radius: 26px;
+            border: 1px solid var(--line);
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.92), rgba(234, 243, 220, 0.86));
+            box-shadow: var(--shadow);
+            animation: matrika-fade-up 0.5s ease both;
+        }
+
+        .topnav-panel p {
+            margin: 0.25rem 0 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .topnav-status {
+            margin: 0 0 0.9rem;
+            padding: 0.9rem 1rem;
+            border-radius: 22px;
+            border: 1px solid rgba(127, 169, 86, 0.22);
+            background: rgba(251, 255, 245, 0.88);
+            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.08);
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .topnav-status strong {
+            color: var(--ink);
         }
 
         .flash-banner {
@@ -3959,6 +3996,155 @@ def render_topbar() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_top_navigation() -> None:
+    learner = current_learner_profile()
+
+    if st.session_state.page == "Admin":
+        st.markdown(
+            """
+            <div class="topnav-panel">
+                <div class="card-kicker">Team admin</div>
+                <p>The protected academy controls are open. Use the actions below to return to the public view or lock the admin area again.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        admin_cols = st.columns(3)
+        with admin_cols[0]:
+            if st.button("Back to academy", key="topnav_admin_back", use_container_width=True):
+                jump_to("Dashboard")
+                st.rerun()
+        with admin_cols[1]:
+            if learner_authenticated():
+                if st.button("Open account", key="topnav_admin_account", use_container_width=True):
+                    jump_to("Account")
+                    st.rerun()
+            else:
+                if st.button("Create / login", key="topnav_admin_login", use_container_width=True):
+                    jump_to("Account")
+                    st.rerun()
+        with admin_cols[2]:
+            st.link_button(
+                "WhatsApp support",
+                build_whatsapp_url("Hi Matrika Academy, I need help with admin or support."),
+                use_container_width=True,
+            )
+        return
+
+    st.markdown(
+        """
+        <div class="topnav-panel">
+            <div class="card-kicker">Top navigation</div>
+            <p>The main academy sections now sit at the top so the content opens wider and the journey feels lighter on desktop and mobile.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    top_row_pages = NAV_PAGE_NAMES[:5]
+    bottom_row_pages = NAV_PAGE_NAMES[5:]
+    for row_index, row_pages in enumerate([top_row_pages, bottom_row_pages]):
+        if not row_pages:
+            continue
+        row_cols = st.columns(len(row_pages))
+        for slot, page_name in zip(row_cols, row_pages):
+            with slot:
+                button_label = f"● {page_name}" if st.session_state.page == page_name else page_name
+                if st.button(
+                    button_label,
+                    key=f"topnav_page_{row_index}_{page_name.lower().replace(' ', '_')}",
+                    use_container_width=True,
+                ):
+                    jump_to(page_name)
+                    st.rerun()
+
+    if learner_authenticated():
+        status_line = (
+            f"<strong>{esc(learner.get('full_name') or 'Matrika learner')}</strong> is signed in on "
+            f"{esc(learner.get('email') or '')}. Admissions, payments, and support stay tied to this account."
+        )
+    else:
+        status_line = (
+            "Create or log into your learner account before you submit forms so bookings, payments, and follow-up stay connected."
+        )
+    st.markdown(f"<div class='topnav-status'>{status_line}</div>", unsafe_allow_html=True)
+
+    action_cols = st.columns(6)
+    with action_cols[0]:
+        if st.button("Book admission", key="topnav_book", use_container_width=True):
+            jump_to("Admissions")
+            st.rerun()
+    with action_cols[1]:
+        if st.button("Open live studio", key="topnav_live", use_container_width=True):
+            jump_to("Live Studio")
+            st.rerun()
+    with action_cols[2]:
+        if st.button("View payments", key="topnav_payments", use_container_width=True):
+            jump_to("Payments")
+            st.rerun()
+    with action_cols[3]:
+        if learner_authenticated():
+            if st.button("Open account", key="topnav_account", use_container_width=True):
+                jump_to("Account")
+                st.rerun()
+        else:
+            if st.button("Create / login", key="topnav_account_entry", use_container_width=True):
+                jump_to("Account")
+                st.rerun()
+    with action_cols[4]:
+        st.link_button(
+            "WhatsApp support",
+            build_whatsapp_url(
+                "Hi Matrika Academy, I want help with admissions, class timings, or payments."
+            ),
+            use_container_width=True,
+        )
+    with action_cols[5]:
+        if st.button("Open team admin", key="topnav_admin", use_container_width=True):
+            jump_to("Admin")
+            st.rerun()
+
+    support_cols = st.columns(3)
+    with support_cols[0]:
+        render_card(
+            "Support",
+            f"Email {CONTACT_EMAIL} or call {CONTACT_PHONE} for admissions, timings, and class help.",
+            kicker="Contact",
+            meta=["IST batches", "Quick help"],
+            class_name="info-card",
+        )
+    with support_cols[1]:
+        if learner_authenticated():
+            render_card(
+                str(learner.get("linked_payment_app") or "Learner account"),
+                str(learner.get("email") or "Your learner account is ready across devices."),
+                kicker="Account connected",
+                meta=["Protected forms", "Saved context"],
+                class_name="info-card",
+            )
+        else:
+            render_card(
+                "Learner account",
+                "Sign in once and keep admissions, payments, and support updates connected to one email.",
+                kicker="Ready when you are",
+                meta=["Protected flow", "Cross-device"],
+                class_name="info-card",
+            )
+    with support_cols[2]:
+        storage_message = (
+            "Persistent Google Sheets storage is connected."
+            if google_persistence_enabled()
+            else "Local CSV fallback is active until cloud sheet sync is available."
+        )
+        render_card(
+            "Storage",
+            storage_message,
+            kicker="Academy sync",
+            meta=["Forms tracked", "Admin ready"],
+            class_name="info-card",
+        )
 
 
 def render_sidebar() -> None:
@@ -5987,8 +6173,8 @@ def initialize_state() -> None:
 def main() -> None:
     apply_theme()
     initialize_state()
-    render_sidebar()
     render_topbar()
+    render_top_navigation()
     render_flash_notice()
     PAGE_ROUTES[st.session_state.page]()
     render_footer()
