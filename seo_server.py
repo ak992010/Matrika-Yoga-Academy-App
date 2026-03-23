@@ -67,6 +67,10 @@ def academy_app_url() -> str:
     return f"{PUBLIC_SITE_URL}{APP_BASE_PATH}/"
 
 
+def academy_embedded_app_url() -> str:
+    return f"{academy_app_url()}?academy_embed=1"
+
+
 def academy_shell_url() -> str:
     return f"{PUBLIC_SITE_URL}/academy"
 
@@ -222,10 +226,30 @@ def academy_shell_html() -> str:
         <a class="fallback" href="{academy_app_url()}" target="_self">Open the app directly</a>
       </div>
     </div>
-    <iframe src="{academy_app_url()}" title="Matrika Academy app" onload="document.getElementById('loader').classList.add('hidden')"></iframe>
+    <iframe id="academy-frame" src="{academy_embedded_app_url()}" title="Matrika Academy app"></iframe>
     <script>
+      var loader = document.getElementById('loader');
+      var frame = document.getElementById('academy-frame');
+      var minimumDelayDone = false;
+      var frameReady = false;
+      function maybeHideLoader() {{
+        if (minimumDelayDone && frameReady && loader) {{
+          loader.classList.add('hidden');
+        }}
+      }}
       window.setTimeout(function () {{
-        var loader = document.getElementById('loader');
+        minimumDelayDone = true;
+        maybeHideLoader();
+      }}, 2200);
+      if (frame) {{
+        frame.addEventListener('load', function () {{
+          window.setTimeout(function () {{
+            frameReady = true;
+            maybeHideLoader();
+          }}, 1200);
+        }});
+      }}
+      window.setTimeout(function () {{
         if (loader) {{
           loader.querySelector('.copy').textContent =
             'The academy is still warming up. This can happen on the free hosting plan after inactivity, but the app should appear shortly.';
@@ -686,11 +710,15 @@ def upstream_url(path: str, query: str) -> str:
 
 @app.get(APP_BASE_PATH)
 async def academy_app_redirect() -> RedirectResponse:
-    return RedirectResponse(url=f"{APP_BASE_PATH}/", status_code=307)
+    return RedirectResponse(url="/academy", status_code=307)
 
 
 @app.api_route(f"{APP_BASE_PATH}" + "/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
 async def proxy_streamlit(path: str, request: Request) -> Response:
+    normalized_path = path.strip("/")
+    if request.method == "GET" and not normalized_path and request.query_params.get("academy_embed") != "1":
+        return RedirectResponse(url="/academy", status_code=307)
+
     body = await request.body()
     headers = {key: value for key, value in request.headers.items() if key.lower() != "host"}
     target = upstream_url(f"/{path}", request.url.query)
