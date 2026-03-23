@@ -43,6 +43,8 @@ Deploy to Render
    - `GOOGLE_SHEET_ID`
    - `GOOGLE_SERVICE_ACCOUNT_JSON`
    - `ADMIN_PASSWORD`
+   - `RESEND_API_KEY`
+   - `RESEND_FROM_EMAIL`
    - `SMTP_HOST`
    - `SMTP_PORT`
    - `SMTP_USERNAME`
@@ -62,6 +64,8 @@ Deploy to Streamlit Community Cloud
 ```toml
 google_sheet_id = "your-google-sheet-id"
 admin_password = "choose-a-strong-password"
+resend_api_key = "re_your_resend_api_key"
+resend_from_email = "Matrika Academy <onboarding@resend.dev>"
 smtp_host = "smtp.gmail.com"
 smtp_port = 587
 smtp_username = "your-email@gmail.com"
@@ -89,8 +93,9 @@ client_x509_cert_url = "https://www.googleapis.com/robot/v1/metadata/x509/servic
 4. Share the Google Sheet with the service account email from the JSON file.
 5. Redeploy the app. The sidebar will show whether persistent Google Sheets storage is active.
 6. Open the `Admin` page in the app and unlock it with `admin_password` to review submissions.
-7. Add the SMTP secrets if you want automatic confirmation emails to be sent after form submissions.
-8. Add the Razorpay secrets if you want the payment page to generate hosted Razorpay checkout links.
+7. Add `resend_api_key` and `resend_from_email` if you want automatic confirmation emails and password reset codes to use HTTPS delivery, which works better on hosts that block SMTP.
+8. Or add the SMTP secrets if you specifically want SMTP delivery after form submissions.
+9. Add the Razorpay secrets if you want the payment page to generate hosted Razorpay checkout links.
 
 Google Sheets setup checklist
 1. Create a Google Sheet that will hold the form data.
@@ -108,8 +113,10 @@ Admin tools
 
 Confirmation emails
 - Every form with an email field can send a confirmation email to the same address after submission.
+- The app now supports HTTPS email delivery through Resend, which is the recommended option on Render.
 - For Gmail, use `smtp.gmail.com` with port `587` and a Gmail app password.
-- If SMTP secrets are missing, submissions still save normally and the app shows a setup hint instead of failing.
+- On free Render web services, outbound SMTP ports are blocked, so Resend is the better production choice there.
+- If email secrets are missing, submissions still save normally and the app shows a setup hint instead of failing.
 
 Razorpay checkout
 - The payments page can generate hosted Razorpay Payment Links for the signed-in learner account.

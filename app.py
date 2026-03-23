@@ -62,6 +62,9 @@ SMTP_USERNAME_SECRET = "smtp_username"
 SMTP_PASSWORD_SECRET = "smtp_password"
 SMTP_FROM_EMAIL_SECRET = "smtp_from_email"
 SMTP_FROM_NAME_SECRET = "smtp_from_name"
+RESEND_API_KEY_SECRET = "resend_api_key"
+RESEND_FROM_EMAIL_SECRET = "resend_from_email"
+RESEND_API_URL = "https://api.resend.com/emails"
 GOOGLE_SERVICE_ACCOUNT_FILE_ENV = "GOOGLE_SERVICE_ACCOUNT_FILE"
 PRIMARY_PUBLIC_DOMAIN = "matrikayogaacademy.com"
 LEARNER_PASSWORD_MIN_LENGTH = 12
@@ -1535,6 +1538,78 @@ def smtp_password() -> str:
     return password
 
 
+def resend_api_key() -> str:
+    return str(get_secret_value(RESEND_API_KEY_SECRET, "")).strip()
+
+
+def resend_from_email() -> str:
+    value = str(get_secret_value(RESEND_FROM_EMAIL_SECRET, "")).strip()
+    return value or smtp_from_email()
+
+
+def resend_configured() -> bool:
+    return bool(resend_api_key()) and bool(resend_from_email())
+
+
+def email_delivery_configured() -> bool:
+    return resend_configured() or smtp_configured()
+
+
+def smtp_blocked_message() -> str:
+    return (
+        "Email delivery could not be sent because outbound SMTP is blocked on the current host. "
+        "On free Render web services, outbound SMTP ports are blocked. Upgrade the service or "
+        f"configure `{RESEND_API_KEY_SECRET}` with `{RESEND_FROM_EMAIL_SECRET}` to send mail over HTTPS."
+    )
+
+
+def send_via_resend(
+    *,
+    to_email: str,
+    subject: str,
+    body_text: str,
+) -> tuple[bool, str]:
+    if not resend_configured():
+        return False, "Email confirmations are not configured yet."
+
+    payload = {
+        "from": f"{smtp_from_name()} <{resend_from_email()}>",
+        "to": [to_email],
+        "subject": subject,
+        "text": body_text,
+        "reply_to": CONTACT_EMAIL,
+    }
+    request = Request(
+        RESEND_API_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {resend_api_key()}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=20) as response:
+            raw = response.read().decode("utf-8", errors="ignore")
+            if raw:
+                try:
+                    data = json.loads(raw)
+                except json.JSONDecodeError:
+                    data = {}
+            else:
+                data = {}
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="ignore")
+        return False, f"Confirmation email could not be sent through Resend: HTTP {exc.code} {detail or exc.reason}"
+    except (URLError, OSError) as exc:
+        return False, f"Confirmation email could not be sent through Resend: {exc}"
+
+    message_id = str(data.get("id", "")).strip()
+    if message_id:
+        return True, f"Confirmation email sent to {to_email}."
+    return True, f"Confirmation email queued for {to_email}."
+
+
 def send_confirmation_email(
     *,
     to_email: str,
@@ -1545,7 +1620,11 @@ def send_confirmation_email(
     next_steps: str,
     intro_text: str | None = None,
 ) -> tuple[bool, str]:
-    if not smtp_configured():
+    if resend_configured():
+        delivery_path = "resend"
+    elif smtp_configured():
+        delivery_path = "smtp"
+    else:
         return False, "Email confirmations are not configured yet."
 
     detail_lines = [f"- {label}: {value}" for label, value in details if str(value).strip()]
@@ -1565,12 +1644,17 @@ def send_confirmation_email(
         "Matrika Academy",
     ]
 
+    body_text = "\n".join(body_lines)
+
+    if delivery_path == "resend":
+        return send_via_resend(to_email=to_email, subject=subject, body_text=body_text)
+
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = f"{smtp_from_name()} <{smtp_from_email()}>"
     message["To"] = to_email
     message["Reply-To"] = CONTACT_EMAIL
-    message.set_content("\n".join(body_lines))
+    message.set_content(body_text)
 
     host = str(get_secret_value(SMTP_HOST_SECRET, "")).strip()
     username = str(get_secret_value(SMTP_USERNAME_SECRET, "")).strip()
@@ -1589,6 +1673,10 @@ def send_confirmation_email(
                 server.ehlo()
                 server.login(username, password)
                 server.send_message(message)
+    except OSError as exc:
+        if getattr(exc, "errno", None) == 101 or "network is unreachable" in str(exc).lower():
+            return False, smtp_blocked_message()
+        return False, f"Confirmation email could not be sent: {exc}"
     except Exception as exc:
         return False, f"Confirmation email could not be sent: {exc}"
 
@@ -1600,7 +1688,9 @@ def render_confirmation_result(result: tuple[bool, str]) -> None:
     if delivered:
         st.info(message)
     elif "not configured yet" in message:
-        st.caption("Confirmation emails will start once SMTP secrets are added.")
+        st.caption("Confirmation emails will start once academy email delivery is configured.")
+    elif "outbound SMTP is blocked on the current host" in message:
+        st.caption("Email delivery is blocked by the current hosting network. Switch to an HTTPS email service or a paid host instance.")
     else:
         log_runtime_issue(message)
         st.caption("Email delivery is temporarily unavailable. Your request is still saved in the academy.")
@@ -1629,7 +1719,14 @@ def send_automatic_reply(
         intro_text=intro_text,
     )
     delivered, detail = result
-    status = "sent" if delivered else ("pending_configuration" if "not configured yet" in detail else "failed")
+    if delivered:
+        status = "sent"
+    elif "not configured yet" in detail:
+        status = "pending_configuration"
+    elif "outbound SMTP is blocked on the current host" in detail:
+        status = "host_blocked"
+    else:
+        status = "failed"
     save_row(
         AUTOMATED_REPLY_LOG_CSV,
         {
@@ -1960,11 +2057,14 @@ def storage_status_lines() -> list[str]:
         lines.append("Admin password is configured.")
     else:
         lines.append(f"Add `{ADMIN_PASSWORD_SECRET}` in Streamlit secrets or host env vars to protect the admin page.")
-    if smtp_configured():
-        lines.append("Automatic reply emails and password reset verification are configured.")
+    if resend_configured():
+        lines.append("Automatic reply emails and password reset verification are configured through Resend.")
+    elif smtp_configured():
+        lines.append("SMTP settings are present for automatic replies and password reset verification.")
+        lines.append("If the app is on free Render, outbound SMTP is blocked and an HTTPS mail service is recommended.")
     else:
         lines.append(
-            f"Add `{SMTP_HOST_SECRET}`, `{SMTP_PORT_SECRET}`, `{SMTP_USERNAME_SECRET}`, and `{SMTP_PASSWORD_SECRET}` in secrets or env vars to send automatic replies and password reset codes."
+            f"Add `{RESEND_API_KEY_SECRET}` and `{RESEND_FROM_EMAIL_SECRET}` for HTTPS email delivery, or add `{SMTP_HOST_SECRET}`, `{SMTP_PORT_SECRET}`, `{SMTP_USERNAME_SECRET}`, and `{SMTP_PASSWORD_SECRET}` for SMTP delivery."
         )
     if razorpay_configured():
         lines.append("Razorpay payment links are configured.")
@@ -4796,7 +4896,7 @@ def account_page() -> None:
             "Verify by email and reset calmly",
             "We will send a short verification code to your learner email. Enter it below with a new password to restore access.",
         )
-        if not smtp_configured():
+        if not email_delivery_configured():
             render_card(
                 "Password reset email is temporarily unavailable",
                 "The learner account is safe, but automated reset emails cannot be sent until academy mail delivery is reconnected. Use WhatsApp or email below and the team can help you restore access manually.",
@@ -4824,7 +4924,7 @@ def account_page() -> None:
                         st.error("Enter the learner email linked to your account.")
                     elif not valid_email(clean_reset_email):
                         st.error("Enter a valid email address.")
-                    elif not smtp_configured():
+                    elif not email_delivery_configured():
                         st.info("Password reset by email is temporarily unavailable. Please use WhatsApp or email support and the academy will help restore access.")
                     else:
                         account = find_user_account(clean_reset_email)
