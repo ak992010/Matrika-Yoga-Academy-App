@@ -30,11 +30,18 @@ DATA_DIR = APP_DIR / "submissions"
 DATA_DIR.mkdir(exist_ok=True)
 LOGO_PATH = APP_DIR / "assets" / "matrika_logo.svg"
 BUDDHA_BACKGROUND_PATH = APP_DIR / "assets" / "buddha_meditation.svg"
+PHONEPE_TEST_QR_ASSET_CANDIDATES = (
+    APP_DIR / "assets" / "phonepe_test_qr.png",
+    APP_DIR / "assets" / "phonepe_test_qr.jpg",
+    APP_DIR / "assets" / "phonepe_test_qr.jpeg",
+    APP_DIR / "assets" / "phonepe_test_qr.webp",
+)
 LIVE_ZOOM_URL = "https://us04web.zoom.us/j/8048675666?pwd=KF3fzQ5y1ZaDibDafMrbWHyCHl2jqV.1"
 BACKUP_MEET_URL = ""
 REPLAY_DRIVE_URL = ""
 PAYMENT_UPI_ID = "pdr14@ybl"
 PAYMENT_UPI_URL = f"upi://pay?pa={PAYMENT_UPI_ID}&pn=Matrika%20Academy&cu=INR"
+PAYMENT_UPI_DISPLAY_NAME = os.getenv("PAYMENT_UPI_DISPLAY_NAME", "PEDDAMANDADI LAVANYA")
 CONTACT_PHONE = "7893939545"
 CONTACT_EMAIL = "drpeddamandadi@gmail.com"
 APP_BASE_PATH = os.getenv("APP_BASE_PATH", "/").rstrip("/") or "/"
@@ -981,6 +988,194 @@ def render_payment_qr(
     else:
         st.caption("QR generation becomes available once the QR package is installed on the host.")
         st.code(data)
+
+
+def render_phonepe_test_qr(
+    data: str,
+    *,
+    payee_name: str,
+    upi_id: str,
+) -> None:
+    qr_bytes = qr_code_png_bytes(data)
+    custom_qr_bytes = None
+    for candidate in PHONEPE_TEST_QR_ASSET_CANDIDATES:
+        if candidate.exists():
+            custom_qr_bytes = candidate.read_bytes()
+            break
+    if not qr_bytes and not custom_qr_bytes:
+        render_payment_qr(
+            "PhonePe accepted here",
+            data,
+            "Scan this on another device to open the PhonePe-style UPI payment flow.",
+            meta=["PhonePe", upi_id, "Test mode"],
+        )
+        return
+
+    qr_image_bytes = custom_qr_bytes or qr_bytes
+    qr_b64 = base64.b64encode(qr_image_bytes).decode("ascii")
+    st.markdown(
+        f"""
+        <style>
+        .phonepe-test-card {{
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top right, rgba(167, 201, 122, 0.28), rgba(167, 201, 122, 0) 34%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 248, 239, 0.98) 100%);
+            border: 1px solid rgba(127, 169, 86, 0.2);
+            border-radius: 28px;
+            box-shadow: 0 24px 60px rgba(76, 109, 63, 0.14);
+            padding: 1.65rem 1.4rem 1.4rem;
+            text-align: center;
+        }}
+        .phonepe-test-card::before {{
+            content: "";
+            position: absolute;
+            inset: auto -1rem -2rem auto;
+            width: 12rem;
+            height: 12rem;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(127, 169, 86, 0.2), rgba(127, 169, 86, 0) 70%);
+            pointer-events: none;
+        }}
+        .phonepe-test-brand {{
+            align-items: center;
+            display: inline-flex;
+            gap: 0.95rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }}
+        .phonepe-test-logo {{
+            align-items: center;
+            background: linear-gradient(160deg, #6f2dbd 0%, #4f1d95 100%);
+            border-radius: 999px;
+            color: #ffffff;
+            display: inline-flex;
+            font-size: 1.3rem;
+            font-weight: 800;
+            height: 3.35rem;
+            justify-content: center;
+            width: 3.35rem;
+        }}
+        .phonepe-test-name {{
+            color: #101225;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            margin: 0;
+        }}
+        .phonepe-test-accepted {{
+            color: #5f259f;
+            font-size: 0.9rem;
+            font-weight: 900;
+            letter-spacing: 0.18em;
+            margin: 0.4rem 0 1rem;
+            text-transform: uppercase;
+        }}
+        .phonepe-test-theme {{
+            color: #3f5a31;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            margin: -0.2rem 0 0.75rem;
+            text-transform: uppercase;
+        }}
+        .phonepe-test-caption {{
+            color: #20263b;
+            font-size: 1rem;
+            line-height: 1.5;
+            margin: 0 0 1.35rem;
+            position: relative;
+            z-index: 1;
+        }}
+        .phonepe-test-qr-shell {{
+            background: linear-gradient(180deg, #ffffff 0%, rgba(250, 248, 255, 0.84) 100%);
+            border: 1px solid rgba(127, 169, 86, 0.14);
+            border-radius: 24px;
+            margin: 0 auto;
+            max-width: 23rem;
+            padding: 1rem 1rem 0.85rem;
+            position: relative;
+            z-index: 1;
+        }}
+        .phonepe-test-qr-shell img {{
+            border-radius: 14px;
+            display: block;
+            margin: 0 auto;
+            width: 100%;
+        }}
+        .phonepe-test-payee {{
+            color: #151827;
+            font-size: 1.15rem;
+            font-weight: 900;
+            letter-spacing: 0.05em;
+            margin-top: 1rem;
+            position: relative;
+            z-index: 1;
+            text-transform: uppercase;
+        }}
+        .phonepe-test-upi {{
+            color: #446236;
+            font-size: 0.92rem;
+            font-weight: 700;
+            margin-top: 0.35rem;
+            position: relative;
+            z-index: 1;
+        }}
+        .phonepe-test-note {{
+            color: #6e7388;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            margin-top: 1.05rem;
+            position: relative;
+            z-index: 1;
+        }}
+        .phonepe-test-chip-row {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            justify-content: center;
+            margin-top: 1rem;
+            position: relative;
+            z-index: 1;
+        }}
+        .phonepe-test-chip {{
+            background: rgba(167, 201, 122, 0.16);
+            border: 1px solid rgba(127, 169, 86, 0.18);
+            border-radius: 999px;
+            color: #3f5a31;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            padding: 0.36rem 0.68rem;
+        }}
+        </style>
+        <div class="phonepe-test-card">
+            <div class="phonepe-test-brand">
+                <div class="phonepe-test-logo">P</div>
+                <p class="phonepe-test-name">PhonePe</p>
+            </div>
+            <p class="phonepe-test-accepted">Accepted here</p>
+            <p class="phonepe-test-theme">Matrika theme payment lane</p>
+            <p class="phonepe-test-caption">Scan &amp; Pay Using PhonePe App</p>
+            <div class="phonepe-test-qr-shell">
+                <img src="data:image/png;base64,{qr_b64}" alt="PhonePe style payment QR" />
+            </div>
+            <div class="phonepe-test-payee">{esc(payee_name)}</div>
+            <div class="phonepe-test-upi">{esc(upi_id)}</div>
+            <div class="phonepe-test-chip-row">
+                <span class="phonepe-test-chip">Test mode</span>
+                <span class="phonepe-test-chip">UPI ready</span>
+                <span class="phonepe-test-chip">Theme matched</span>
+            </div>
+            <div class="phonepe-test-note">Test mode fallback card for quick UPI scans while Razorpay remains in sandbox.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def razorpay_notes_payload(
@@ -5199,6 +5394,8 @@ def payments_page() -> None:
     )
     latest_link = st.session_state.get("latest_razorpay_link") or latest_razorpay_link(learner.get("email", ""))
     academy_upi_qr = payment_app_link(linked_app or "UPI", learner)
+    phonepe_test_qr = payment_app_link("PhonePe", learner)
+    current_mode = razorpay_mode() if razorpay_configured() else ""
 
     left, right = st.columns([1.15, 0.85])
     with left:
@@ -5324,12 +5521,19 @@ def payments_page() -> None:
                         st.rerun()
         qr_cols = st.columns(2)
         with qr_cols[0]:
-            render_payment_qr(
-                "Scan UPI QR",
-                academy_upi_qr,
-                "Scan this on another device to open the Matrika Academy UPI payment destination.",
-                meta=["UPI", PAYMENT_UPI_ID, linked_app or "Any UPI app"],
-            )
+            if current_mode == "test":
+                render_phonepe_test_qr(
+                    phonepe_test_qr,
+                    payee_name=PAYMENT_UPI_DISPLAY_NAME,
+                    upi_id=PAYMENT_UPI_ID,
+                )
+            else:
+                render_payment_qr(
+                    "Scan UPI QR",
+                    academy_upi_qr,
+                    "Scan this on another device to open the Matrika Academy UPI payment destination.",
+                    meta=["UPI", PAYMENT_UPI_ID, linked_app or "Any UPI app"],
+                )
         with qr_cols[1]:
             if latest_link and latest_link.get("short_url"):
                 render_payment_qr(
@@ -5383,50 +5587,49 @@ def payments_page() -> None:
                 )
         if linked_app and linked_handle:
             st.caption(f"Linked payer profile: {linked_app} · {linked_handle}")
-    with right:
-        render_card(
-            "Need an invoice?",
-            f"Email {CONTACT_EMAIL} with your selected plan and GST details.",
-            kicker="Billing",
-            meta=["Invoice support", "GST ready"],
-            class_name="info-card",
-        )
-        st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
-        if razorpay_configured():
-            current_mode = razorpay_mode()
-            if current_mode == "test":
-                render_card(
-                    "Razorpay is in test mode",
-                    "Checkout links can be created and scanned successfully, but they will not collect real payments until live Razorpay keys are added in the host environment.",
-                    kicker="Test payments only",
-                    meta=["rzp_test", "Safe for QA", "Switch to live keys later"],
-                    class_name="info-card",
-                )
-                st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
+        with right:
             render_card(
-                "Why Razorpay here?",
-                "The hosted checkout keeps the payment step cleaner on mobile and desktop, while the academy still keeps your learner account, plan, and follow-up context connected.",
-                kicker="Recommended",
-                meta=["Hosted checkout", "Cards + UPI + netbanking", "Learner linked"],
+                "Need an invoice?",
+                f"Email {CONTACT_EMAIL} with your selected plan and GST details.",
+                kicker="Billing",
+                meta=["Invoice support", "GST ready"],
                 class_name="info-card",
             )
             st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
-        if linked_app:
-            render_card(
-                linked_app,
-                linked_handle or "Preferred payment handle saved in your learner account.",
-                kicker="Linked payment app",
-                meta=["Account connected", "Reusable", learner.get("linked_payment_notes") or "No note"],
-                class_name="info-card",
-            )
-        else:
-            render_card(
-                "No app linked yet",
-                "Link Google Pay, PhonePe, Paytm, BHIM, or another UPI app from the Account page for a smoother payment flow.",
-                kicker="Payment linking",
-                meta=["Account page", "Third-party apps", "Reusable"],
-                class_name="info-card",
-            )
+            if razorpay_configured():
+                if current_mode == "test":
+                    render_card(
+                        "Razorpay is in test mode",
+                        "Checkout links can be created and scanned successfully, but they will not collect real payments until live Razorpay keys are added in the host environment.",
+                        kicker="Test payments only",
+                        meta=["rzp_test", "Safe for QA", "Switch to live keys later"],
+                        class_name="info-card",
+                    )
+                    st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
+                render_card(
+                    "Why Razorpay here?",
+                    "The hosted checkout keeps the payment step cleaner on mobile and desktop, while the academy still keeps your learner account, plan, and follow-up context connected.",
+                    kicker="Recommended",
+                    meta=["Hosted checkout", "Cards + UPI + netbanking", "Learner linked"],
+                    class_name="info-card",
+                )
+                st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
+            if linked_app:
+                render_card(
+                    linked_app,
+                    linked_handle or "Preferred payment handle saved in your learner account.",
+                    kicker="Linked payment app",
+                    meta=["Account connected", "Reusable", learner.get("linked_payment_notes") or "No note"],
+                    class_name="info-card",
+                )
+            else:
+                render_card(
+                    "No app linked yet",
+                    "Link Google Pay, PhonePe, Paytm, BHIM, or another UPI app from the Account page for a smoother payment flow.",
+                    kicker="Payment linking",
+                    meta=["Account page", "Third-party apps", "Reusable"],
+                    class_name="info-card",
+                )
 
     st.divider()
     render_section("Share payment proof", "Upload your payment reference so the team can verify it.", "Saved entries go to a CSV file for easy review.")
