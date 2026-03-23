@@ -2812,23 +2812,23 @@ def apply_theme() -> None:
     buddha_background = buddha_background_data_uri()
     css = """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&display=swap');
 
         :root {
-            --bg: #f5f8ef;
-            --bg-soft: #e4eed9;
-            --bg-deep: #d6e6bf;
-            --ink: #203629;
-            --muted: #617767;
+            --bg: #f7faf2;
+            --bg-soft: #edf4e4;
+            --bg-deep: #deebcb;
+            --ink: #18251d;
+            --muted: #59695f;
             --pista: #a7c97a;
-            --pista-deep: #7fa956;
-            --forest: #4c6d3f;
-            --moss: #33512f;
-            --lotus: #fbfff5;
-            --mist: #edf5e4;
-            --line: rgba(76, 109, 63, 0.16);
-            --card: rgba(252, 255, 247, 0.8);
-            --shadow: 0 18px 45px rgba(60, 92, 47, 0.13);
+            --pista-deep: #88ae60;
+            --forest: #39513a;
+            --moss: #29402c;
+            --lotus: #fcfef9;
+            --mist: #f1f6ea;
+            --line: rgba(57, 81, 58, 0.12);
+            --card: rgba(255, 255, 255, 0.68);
+            --shadow: 0 12px 36px rgba(38, 61, 42, 0.08);
         }
 
         * {
@@ -2838,8 +2838,15 @@ def apply_theme() -> None:
         html,
         body,
         [class*="css"] {
-            font-family: "Manrope", sans-serif;
+            font-family: "Instrument Sans", sans-serif;
             color: var(--ink);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        html {
+            scroll-behavior: smooth;
         }
 
         .stApp {
@@ -2900,9 +2907,9 @@ def apply_theme() -> None:
         h2,
         h3,
         h4 {
-            font-family: "Cormorant Garamond", serif;
+            font-family: "Instrument Sans", sans-serif;
             color: var(--ink);
-            letter-spacing: 0.01em;
+            letter-spacing: -0.035em;
         }
 
         [data-testid="stSidebar"] {
@@ -3008,6 +3015,9 @@ def apply_theme() -> None:
             box-shadow: var(--shadow);
             backdrop-filter: blur(12px);
             animation: matrika-fade-up 0.55s ease both;
+            position: sticky;
+            top: 0.8rem;
+            z-index: 55;
         }
 
         .topbar-brand {
@@ -3037,8 +3047,9 @@ def apply_theme() -> None:
         }
 
         .brand-label {
-            font-family: "Cormorant Garamond", serif;
-            font-size: 2rem;
+            font-family: "Instrument Sans", sans-serif;
+            font-size: 1.68rem;
+            font-weight: 700;
             line-height: 0.9;
         }
 
@@ -3450,9 +3461,10 @@ def apply_theme() -> None:
 
         .metric-value {
             margin: 0.2rem 0 0.2rem;
-            font-family: "Cormorant Garamond", serif;
+            font-family: "Instrument Sans", sans-serif;
             font-size: 2rem;
             line-height: 1;
+            font-weight: 700;
         }
 
         .metric-note {
@@ -3872,13 +3884,13 @@ def apply_theme() -> None:
                 radial-gradient(circle at top right, rgba(167, 201, 122, 0.22), rgba(167, 201, 122, 0) 34%),
                 linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(238, 246, 228, 0.9));
             border-color: rgba(127, 169, 86, 0.26);
-            box-shadow: 0 24px 70px rgba(60, 92, 47, 0.14);
+            box-shadow: 0 12px 34px rgba(38, 61, 42, 0.08);
         }
 
         .hero-card {
             border-radius: 34px;
             border-color: rgba(127, 169, 86, 0.28);
-            box-shadow: 0 34px 90px rgba(60, 92, 47, 0.18);
+            box-shadow: 0 18px 48px rgba(38, 61, 42, 0.08);
             background:
                 radial-gradient(circle at 14% 14%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 18%),
                 linear-gradient(140deg, rgba(255, 255, 255, 0.78), rgba(233, 243, 220, 0.9) 56%, rgba(216, 232, 193, 0.92));
@@ -4030,8 +4042,9 @@ def apply_theme() -> None:
         .hero-stat-value {
             display: block;
             margin-top: 0.18rem;
-            font-family: "Cormorant Garamond", serif;
-            font-size: 1.35rem;
+            font-family: "Instrument Sans", sans-serif;
+            font-size: 1.12rem;
+            font-weight: 700;
             line-height: 1;
         }
 
@@ -4059,7 +4072,7 @@ def apply_theme() -> None:
         .form-banner,
         div[data-testid="stForm"] {
             border-color: rgba(127, 169, 86, 0.2);
-            box-shadow: 0 22px 58px rgba(60, 92, 47, 0.11);
+            box-shadow: 0 10px 28px rgba(38, 61, 42, 0.06);
         }
 
         .feature-card:hover,
@@ -4069,14 +4082,19 @@ def apply_theme() -> None:
         .timeline-card:hover,
         .contact-card:hover,
         .metric-card:hover {
-            transform: translateY(-5px) scale(1.01);
-            box-shadow: 0 28px 72px rgba(60, 92, 47, 0.18);
+            transform: translateY(-3px);
+            box-shadow: 0 18px 42px rgba(38, 61, 42, 0.09);
         }
 
         .stButton > button,
         [data-testid="stLinkButton"] a {
             position: relative;
             overflow: hidden;
+            background: rgba(255, 255, 255, 0.82) !important;
+            color: var(--ink) !important;
+            border: 1px solid rgba(57, 81, 58, 0.1) !important;
+            box-shadow: 0 8px 24px rgba(38, 61, 42, 0.07) !important;
+            backdrop-filter: blur(18px);
         }
 
         .stButton > button::after,
@@ -4094,9 +4112,49 @@ def apply_theme() -> None:
             transform: translateX(130%);
         }
 
+        @supports (animation-timeline: view()) {
+            .section-heading,
+            .feature-card,
+            .info-card,
+            .schedule-card,
+            .pricing-card,
+            .timeline-card,
+            .contact-card,
+            .metric-card,
+            .illustration-panel,
+            .form-banner,
+            .footer-shell {
+                opacity: 0.14;
+                transform: translateY(44px) scale(0.985);
+                animation: matrika-scroll-reveal linear both;
+                animation-timeline: view();
+                animation-range: entry 10% cover 34%;
+            }
+
+            .hero-card,
+            .topbar-shell,
+            .topnav-panel,
+            .topnav-status {
+                opacity: 1;
+                transform: none;
+                animation-timeline: auto;
+            }
+        }
+
         @keyframes matrika-drift {
             0%, 100% { transform: translate3d(0, 0, 0); }
             50% { transform: translate3d(18px, 14px, 0); }
+        }
+
+        @keyframes matrika-scroll-reveal {
+            0% {
+                opacity: 0.14;
+                transform: translateY(44px) scale(0.985);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
         @keyframes matrika-breathe {
