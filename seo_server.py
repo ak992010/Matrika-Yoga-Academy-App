@@ -27,6 +27,8 @@ STREAMLIT_HTTP_BASE = f"http://127.0.0.1:{INTERNAL_STREAMLIT_PORT}"
 STREAMLIT_WS_BASE = f"ws://127.0.0.1:{INTERNAL_STREAMLIT_PORT}"
 CONTACT_PHONE = "7893939545"
 CONTACT_EMAIL = "drpeddamandadi@gmail.com"
+CEO_NAME = "Abhinav"
+MD_NAME = "Dr. Lavanya"
 LIVE_ZOOM_URL = "https://us04web.zoom.us/j/8048675666?pwd=KF3fzQ5y1ZaDibDafMrbWHyCHl2jqV.1"
 WHATSAPP_URL = f"https://wa.me/917893939545?text={quote('Hi Matrika Academy, I want help choosing the right yoga path.')}"
 
@@ -52,6 +54,57 @@ FAQS = [
     ),
 ]
 
+SEO_CONTENT_PAGES = {
+    "prenatal-yoga": {
+        "title": "Prenatal Yoga Classes Online | Matrika Yoga Academy",
+        "description": "Explore guided prenatal yoga classes online with live support, replay access, and calm trimester-aware practice at Matrika Yoga Academy.",
+        "eyebrow": "Prenatal care",
+        "headline": "Prenatal yoga that feels calm, supported, and easy to continue.",
+        "intro": "Matrika Yoga Academy offers prenatal classes online for learners who want breath-led movement, gentler rhythm, and a more supported digital experience from home.",
+        "points": [
+            "Trimester-aware sequences and guided breath",
+            "Live classes with replay support for busy schedules",
+            "A calmer route into the academy app for admissions and follow-up",
+        ],
+    },
+    "postnatal-yoga": {
+        "title": "Postnatal Recovery Yoga Online | Matrika Yoga Academy",
+        "description": "Discover online postnatal recovery yoga with careful movement, breathing support, and a calmer routine-building path at Matrika Yoga Academy.",
+        "eyebrow": "Postnatal recovery",
+        "headline": "Postnatal yoga designed for recovery, comfort, and steadier routine building.",
+        "intro": "The postnatal experience at Matrika keeps recovery practical and low-pressure, with online access, replay support, and more guided next steps.",
+        "points": [
+            "Recovery-aware sessions with gentler progression",
+            "Guidance for comfort, mobility, and returning to rhythm",
+            "Support that continues through the academy app after joining",
+        ],
+    },
+    "kids-yoga-classes": {
+        "title": "Kids Yoga Classes Online | Matrika Yoga Academy",
+        "description": "Find online kids yoga classes with playful movement, focus-building routines, and parent-friendly follow-up at Matrika Yoga Academy.",
+        "eyebrow": "Kids yoga",
+        "headline": "Kids yoga that feels playful, focused, and parent-friendly from the first visit.",
+        "intro": "The kids yoga path is designed to help children move, focus, and enjoy the class rhythm while giving parents a clearer, calmer digital journey.",
+        "points": [
+            "Movement, stories, and calm-building routines",
+            "Ages 5 to 14 with parent-friendly follow-up",
+            "Simple enquiry and scheduling support through the academy app",
+        ],
+    },
+    "yoga-teacher-training": {
+        "title": "Yoga Teacher Training Online | Matrika Yoga Academy",
+        "description": "Explore online yoga teacher training with mentorship, practice teaching, and cohort guidance at Matrika Yoga Academy.",
+        "eyebrow": "Teacher training",
+        "headline": "Teacher training that feels mentored, modern, and steady.",
+        "intro": "Matrika's certification path supports future teachers with sequencing, practicum, feedback, and a clearer digital journey from interest to cohort.",
+        "points": [
+            "Mentored feedback and supervised practice",
+            "A clearer view of progression, timing, and readiness",
+            "Protected academy tools for applications, payments, and follow-up",
+        ],
+    },
+}
+
 streamlit_process: subprocess.Popen[str] | None = None
 
 
@@ -73,6 +126,10 @@ def academy_embedded_app_url() -> str:
 
 def academy_shell_url() -> str:
     return f"{PUBLIC_SITE_URL}/academy"
+
+
+def seo_page_url(slug: str) -> str:
+    return f"{PUBLIC_SITE_URL}/{slug}"
 
 
 def json_ld_payload() -> str:
@@ -330,6 +387,16 @@ def landing_page_html() -> str:
     marquee_markup = "".join(
         f"<span>{esc(item)}</span>"
         for item in marquee_items * 2
+    )
+    seo_cards = "".join(
+        f"""
+        <a class="program-card reveal seo-link-card" style="--delay:{index * 0.08:.2f}s;" href="{seo_page_url(slug)}">
+            <span class="card-kicker">{esc(page["eyebrow"])}</span>
+            <h3>{esc(page["headline"])}</h3>
+            <p>{esc(page["description"])}</p>
+        </a>
+        """
+        for index, (slug, page) in enumerate(SEO_CONTENT_PAGES.items(), start=1)
     )
     floating_markup = "".join(
         f"""
@@ -897,7 +964,8 @@ def landing_page_html() -> str:
       .info-card,
       .faq-item,
       .journey-card,
-      .contact-card {{
+      .contact-card,
+      .seo-link-card {{
         padding: 1.2rem;
         border-radius: 24px;
         border: 1px solid var(--line);
@@ -908,7 +976,8 @@ def landing_page_html() -> str:
       .program-card:hover,
       .info-card:hover,
       .journey-card:hover,
-      .contact-card:hover {{
+      .contact-card:hover,
+      .seo-link-card:hover {{
         transform: translateY(-8px);
         border-color: var(--line-strong);
         background: rgba(255,255,255,0.86);
@@ -946,6 +1015,11 @@ def landing_page_html() -> str:
       }}
       .journey-card p {{
         margin-bottom: 0;
+      }}
+      .seo-link-card {{
+        text-decoration: none;
+        color: inherit;
+        display: block;
       }}
       .schedule-list {{
         margin: 0;
@@ -1017,7 +1091,7 @@ def landing_page_html() -> str:
       }}
       .contact-grid {{
         display: grid;
-        grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 1rem;
       }}
       .contact-card {{
@@ -1300,6 +1374,20 @@ def landing_page_html() -> str:
         <div class="grid three">{ritual_cards}</div>
       </section>
 
+      <section class="section reveal" id="insights">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Deeper guides</span>
+            <h2>Search-friendly pages for each major yoga path.</h2>
+          </div>
+          <p>
+            These pages help Google and first-time visitors understand each program in more detail before they
+            move into the academy app.
+          </p>
+        </div>
+        <div class="grid two">{seo_cards}</div>
+      </section>
+
       <section class="section reveal" id="faq">
         <div class="section-head">
           <div>
@@ -1338,6 +1426,14 @@ def landing_page_html() -> str:
             <div class="cta-band">
               <h3>Ready to begin?</h3>
               <p>Use the academy app for live classes, admissions, learner accounts, and the calm digital flow.</p>
+            </div>
+          </div>
+          <div class="contact-card reveal" style="--delay:0.24s;">
+            <h3>Leadership</h3>
+            <p><strong>{esc(CEO_NAME)}</strong> · CEO<br /><strong>{esc(MD_NAME)}</strong> · Managing Director</p>
+            <div class="cta-band">
+              <h3>Care-first direction</h3>
+              <p>The academy is led with both digital clarity and teaching care in mind, so learners know who is guiding the experience behind the scenes.</p>
             </div>
           </div>
         </div>
@@ -1439,6 +1535,224 @@ def landing_page_html() -> str:
 """
 
 
+def seo_content_page_html(slug: str) -> str:
+    page = SEO_CONTENT_PAGES[slug]
+    bullet_markup = "".join(f"<li>{esc(point)}</li>" for point in page["points"])
+    return f"""<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{esc(page["title"])}</title>
+    <meta name="description" content="{esc(page["description"])}" />
+    <link rel="canonical" href="{seo_page_url(slug)}" />
+    <link rel="icon" href="{PUBLIC_SITE_URL}/assets/matrika_logo.svg" type="image/svg+xml" />
+    <style>
+      :root {{
+        --bg: #f6f9f1;
+        --card: rgba(255,255,255,0.84);
+        --ink: #18281a;
+        --muted: #607261;
+        --pista: #adc87b;
+        --forest: #496441;
+        --line: rgba(73, 100, 65, 0.14);
+        --shadow: 0 20px 56px rgba(72, 99, 56, 0.1);
+      }}
+      * {{ box-sizing: border-box; }}
+      body {{
+        margin: 0;
+        font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(173, 200, 123, 0.22), transparent 28%),
+          linear-gradient(160deg, var(--bg), #fbfff8 48%, #edf4e3);
+      }}
+      .shell {{
+        width: min(1080px, calc(100vw - 2rem));
+        margin: 0 auto;
+        padding: 1.2rem 0 3.5rem;
+      }}
+      .topbar,
+      .hero,
+      .section {{
+        border-radius: 30px;
+        border: 1px solid var(--line);
+        background: var(--card);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }}
+      .topbar {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.1rem;
+      }}
+      .brand {{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.85rem;
+        color: inherit;
+        text-decoration: none;
+      }}
+      .brand img {{
+        width: 54px;
+        height: 54px;
+        border-radius: 16px;
+      }}
+      .brand strong {{
+        display: block;
+        font-size: 1.2rem;
+        letter-spacing: -0.04em;
+      }}
+      .brand span {{
+        color: var(--muted);
+        font-size: 0.9rem;
+      }}
+      .actions {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }}
+      .button {{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.9rem 1.15rem;
+        border-radius: 999px;
+        text-decoration: none;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--pista), #7ea55f);
+        color: white;
+      }}
+      .button.secondary {{
+        background: rgba(255,255,255,0.88);
+        color: var(--ink);
+        border: 1px solid var(--line);
+      }}
+      .hero {{
+        margin-top: 1.1rem;
+        padding: clamp(1.4rem, 4vw, 2.6rem);
+        position: relative;
+        overflow: hidden;
+      }}
+      .hero::after {{
+        content: "";
+        position: absolute;
+        right: -1rem;
+        bottom: -1rem;
+        width: min(26vw, 240px);
+        height: min(34vw, 320px);
+        background: url("{PUBLIC_SITE_URL}/assets/buddha_meditation.svg") center bottom / contain no-repeat;
+        opacity: 0.12;
+      }}
+      .eyebrow {{
+        display: inline-flex;
+        padding: 0.38rem 0.72rem;
+        border-radius: 999px;
+        background: rgba(173, 200, 123, 0.18);
+        color: var(--forest);
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }}
+      h1, h2, h3 {{
+        letter-spacing: -0.05em;
+      }}
+      h1 {{
+        margin: 0.7rem 0 0.8rem;
+        font-size: clamp(2.5rem, 6vw, 4.4rem);
+        line-height: 0.92;
+        max-width: 10ch;
+      }}
+      .hero p,
+      .section p,
+      li {{
+        color: var(--muted);
+        line-height: 1.75;
+      }}
+      .hero-grid,
+      .grid {{
+        display: grid;
+        gap: 1rem;
+      }}
+      .hero-grid {{
+        grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
+        align-items: center;
+      }}
+      .story-card,
+      .point-card {{
+        padding: 1.05rem;
+        border-radius: 24px;
+        border: 1px solid var(--line);
+        background: rgba(255,255,255,0.74);
+      }}
+      .point-card ul {{
+        margin: 0;
+        padding-left: 1.1rem;
+      }}
+      .section {{
+        margin-top: 1.1rem;
+        padding: 1.25rem;
+      }}
+      @media (max-width: 900px) {{
+        .topbar, .hero-grid {{
+          display: grid;
+          grid-template-columns: 1fr;
+        }}
+        h1 {{
+          max-width: none;
+        }}
+      }}
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="brand" href="{PUBLIC_SITE_URL}/">
+          <img src="{PUBLIC_SITE_URL}/assets/matrika_logo.svg" alt="Matrika Yoga Academy logo" />
+          <div>
+            <strong>Matrika Yoga Academy</strong>
+            <span>Calm online yoga paths with live and replay support</span>
+          </div>
+        </a>
+        <nav class="actions">
+          <a class="button" href="{academy_shell_url()}">Open Academy App</a>
+          <a class="button secondary" href="{PUBLIC_SITE_URL}/">Back to website</a>
+        </nav>
+      </header>
+      <section class="hero">
+        <div class="hero-grid">
+          <div>
+            <span class="eyebrow">{esc(page["eyebrow"])}</span>
+            <h1>{esc(page["headline"])}</h1>
+            <p>{esc(page["intro"])}</p>
+            <div class="actions" style="margin-top:1rem;">
+              <a class="button" href="{academy_shell_url()}">Continue into the academy</a>
+              <a class="button secondary" href="mailto:{CONTACT_EMAIL}">Email the team</a>
+            </div>
+          </div>
+          <div class="point-card">
+            <h3>What makes this path useful</h3>
+            <ul>{bullet_markup}</ul>
+          </div>
+        </div>
+      </section>
+      <section class="section">
+        <span class="eyebrow">Leadership</span>
+        <h2>Guided by a calmer academy vision.</h2>
+        <p>
+          The academy experience is shaped by <strong>{esc(CEO_NAME)}</strong>, CEO, and <strong>{esc(MD_NAME)}</strong>, Managing Director,
+          so the digital flow and teaching care move together.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
+"""
+
+
 async def wait_for_streamlit() -> None:
     health_url = f"{STREAMLIT_HTTP_BASE}{APP_BASE_PATH}/_stcore/health"
     async with httpx.AsyncClient(timeout=2.0) as client:
@@ -1504,6 +1818,26 @@ async def landing_page() -> HTMLResponse:
     return HTMLResponse(landing_page_html())
 
 
+@app.get("/prenatal-yoga", response_class=HTMLResponse)
+async def prenatal_yoga_page() -> HTMLResponse:
+    return HTMLResponse(seo_content_page_html("prenatal-yoga"))
+
+
+@app.get("/postnatal-yoga", response_class=HTMLResponse)
+async def postnatal_yoga_page() -> HTMLResponse:
+    return HTMLResponse(seo_content_page_html("postnatal-yoga"))
+
+
+@app.get("/kids-yoga-classes", response_class=HTMLResponse)
+async def kids_yoga_page() -> HTMLResponse:
+    return HTMLResponse(seo_content_page_html("kids-yoga-classes"))
+
+
+@app.get("/yoga-teacher-training", response_class=HTMLResponse)
+async def teacher_training_page() -> HTMLResponse:
+    return HTMLResponse(seo_content_page_html("yoga-teacher-training"))
+
+
 @app.get("/academy", response_class=HTMLResponse)
 async def academy_shell() -> HTMLResponse:
     return HTMLResponse(academy_shell_html(), headers={"x-robots-tag": "noindex, nofollow"})
@@ -1528,6 +1862,14 @@ async def robots_txt() -> str:
 
 @app.get("/sitemap.xml")
 async def sitemap_xml() -> Response:
+    page_entries = "\n".join(
+        f"""  <url>
+    <loc>{seo_page_url(slug)}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>"""
+        for slug in SEO_CONTENT_PAGES
+    )
     body = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -1535,6 +1877,7 @@ async def sitemap_xml() -> Response:
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+{page_entries}
 </urlset>
 """
     return Response(content=body, media_type="application/xml")

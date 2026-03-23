@@ -44,6 +44,8 @@ PAYMENT_UPI_URL = f"upi://pay?pa={PAYMENT_UPI_ID}&pn=Matrika%20Academy&cu=INR"
 PAYMENT_UPI_DISPLAY_NAME = os.getenv("PAYMENT_UPI_DISPLAY_NAME", "PEDDAMANDADI LAVANYA")
 CONTACT_PHONE = "7893939545"
 CONTACT_EMAIL = "drpeddamandadi@gmail.com"
+CEO_NAME = "Abhinav"
+MD_NAME = "Dr. Lavanya"
 APP_BASE_PATH = os.getenv("APP_BASE_PATH", "/").rstrip("/") or "/"
 HOME_HREF = APP_BASE_PATH
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://matrikayogaacademy.com").rstrip("/")
@@ -708,6 +710,84 @@ CONTACT_CARDS = [
         "title": PAYMENT_UPI_ID,
         "body": "Use this handle for fee payments and quick confirmation.",
         "meta": ["Instant payment", "Fees"],
+    },
+]
+
+LEADERSHIP_CARDS = [
+    {
+        "kicker": "Leadership",
+        "title": f"{CEO_NAME} · CEO",
+        "body": "Leads the digital growth, learner experience, and public academy direction.",
+        "meta": ["Strategy", "Product", "Growth"],
+    },
+    {
+        "kicker": "Leadership",
+        "title": f"{MD_NAME} · Managing Director",
+        "body": "Guides the academy vision, teaching quality, and the care-first learning experience.",
+        "meta": ["Teaching vision", "Clinical care", "Academy direction"],
+    },
+]
+
+APP_JOURNEY_CARDS = [
+    {
+        "kicker": "Story 01",
+        "title": "Discover the academy with clarity",
+        "body": "The public-facing flow now explains the experience before learners ever need to touch a form.",
+        "meta": ["Story-led", "Premium", "Search ready"],
+    },
+    {
+        "kicker": "Story 02",
+        "title": "Move from interest to action gently",
+        "body": "Programs, schedules, and admissions now feel connected instead of scattered across separate screens.",
+        "meta": ["Guided flow", "Lower friction", "Faster next steps"],
+    },
+    {
+        "kicker": "Story 03",
+        "title": "Stay supported after joining",
+        "body": "Accounts, payments, automatic replies, and follow-up now feel like one calm operating system.",
+        "meta": ["Accounts", "Support", "Continuity"],
+    },
+]
+
+PROGRAM_STORY_CARDS = [
+    {
+        "kicker": "Motherhood",
+        "title": "Prenatal care should feel grounded",
+        "body": "Breath, body comfort, and a steadier rhythm are presented like a guided path, not a list of classes.",
+        "meta": ["Trimester aware", "Calm pace", "Live support"],
+    },
+    {
+        "kicker": "Children",
+        "title": "Kids yoga should feel joyful but clear",
+        "body": "Parents can understand the benefit, the structure, and the next action without hunting through the site.",
+        "meta": ["Parent-friendly", "Movement", "Focus"],
+    },
+    {
+        "kicker": "Teachers",
+        "title": "Training should feel premium and mentored",
+        "body": "The certification route is framed around confidence, practice, and supervised feedback from the start.",
+        "meta": ["Mentorship", "Practicum", "Teaching journey"],
+    },
+]
+
+SCHEDULE_STORY_CARDS = [
+    {
+        "kicker": "Planning",
+        "title": "Morning, evening, or flexible",
+        "body": "Learners can understand the rhythm quickly and choose the time period that fits their real life.",
+        "meta": ["Morning", "Evening", "Weekend"],
+    },
+    {
+        "kicker": "Access",
+        "title": "Live first, replay when needed",
+        "body": "The schedule now explains not just when classes happen, but how the academy supports missed sessions too.",
+        "meta": ["Replay", "Low pressure", "Consistent"],
+    },
+    {
+        "kicker": "Clarity",
+        "title": "A schedule that feels like guidance",
+        "body": "Filters, recommendations, and suggested next steps turn the timetable into a planning tool instead of a table dump.",
+        "meta": ["Interactive", "Guided", "Track-aware"],
     },
 ]
 
@@ -2931,6 +3011,7 @@ def apply_theme() -> None:
         .schedule-card,
         .pricing-card,
         .timeline-card,
+        .story-card,
         .contact-card,
         .metric-card,
         .page-intro,
@@ -3368,6 +3449,7 @@ def apply_theme() -> None:
         .schedule-card,
         .pricing-card,
         .timeline-card,
+        .story-card,
         .contact-card {
             position: relative;
             overflow: hidden;
@@ -3381,6 +3463,7 @@ def apply_theme() -> None:
         .schedule-card:hover,
         .pricing-card:hover,
         .timeline-card:hover,
+        .story-card:hover,
         .contact-card:hover,
         .metric-card:hover {
             transform: translateY(-3px);
@@ -3393,12 +3476,20 @@ def apply_theme() -> None:
         .schedule-card::before,
         .pricing-card::before,
         .timeline-card::before,
+        .story-card::before,
         .contact-card::before {
             content: "";
             position: absolute;
             inset: 0 auto 0 0;
             width: 4px;
             background: linear-gradient(180deg, var(--pista-deep), var(--forest));
+        }
+
+        .story-card {
+            background:
+                radial-gradient(circle at top right, rgba(167, 201, 122, 0.16), rgba(167, 201, 122, 0) 34%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(241, 247, 233, 0.92));
+            min-height: 100%;
         }
 
         .card-kicker {
@@ -3415,6 +3506,7 @@ def apply_theme() -> None:
         .schedule-card h3,
         .pricing-card h3,
         .timeline-card h3,
+        .story-card h3,
         .contact-card h3 {
             margin: 0 0 0.45rem;
             font-size: 1.55rem;
@@ -3511,6 +3603,87 @@ def apply_theme() -> None:
             margin: 0;
             color: var(--muted);
             line-height: 1.55;
+        }
+
+        .story-spotlight {
+            position: relative;
+            overflow: hidden;
+            padding: 1.2rem 1.2rem 1.15rem;
+            border-radius: 30px;
+            border: 1px solid rgba(127, 169, 86, 0.2);
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 22%),
+                linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(236, 245, 227, 0.9));
+            box-shadow: 0 16px 38px rgba(38, 61, 42, 0.08);
+            margin: 1rem 0 1.15rem;
+            animation: matrika-fade-up 0.62s ease both;
+        }
+
+        .story-spotlight::after {
+            content: "";
+            position: absolute;
+            inset: auto -8% -24% auto;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(167, 201, 122, 0.22), rgba(167, 201, 122, 0) 68%);
+            pointer-events: none;
+        }
+
+        .story-spotlight h3 {
+            margin: 0.45rem 0 0.3rem;
+            font-size: clamp(1.85rem, 3.4vw, 2.8rem);
+            line-height: 0.96;
+        }
+
+        .story-spotlight p {
+            margin: 0;
+            max-width: 72ch;
+            color: var(--muted);
+            line-height: 1.68;
+        }
+
+        .story-rail {
+            display: grid;
+            gap: 0.8rem;
+            margin: 1rem 0 1.15rem;
+        }
+
+        .story-rail-item {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.9rem;
+            align-items: start;
+            padding: 1rem 1.05rem;
+            border-radius: 24px;
+            border: 1px solid rgba(127, 169, 86, 0.18);
+            background: rgba(255, 255, 255, 0.76);
+            box-shadow: 0 12px 28px rgba(38, 61, 42, 0.06);
+            animation: matrika-fade-up 0.58s ease both;
+        }
+
+        .story-rail-index {
+            width: 2.35rem;
+            height: 2.35rem;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(173, 200, 123, 0.98), rgba(73, 100, 65, 0.98));
+            color: white;
+            font-size: 0.88rem;
+            font-weight: 800;
+        }
+
+        .story-rail-item h4 {
+            margin: 0 0 0.24rem;
+            font-size: 1.12rem;
+            line-height: 1.06;
+        }
+
+        .story-rail-item p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
         }
 
         .callout {
@@ -3827,6 +4000,7 @@ def apply_theme() -> None:
         .schedule-card,
         .pricing-card,
         .timeline-card,
+        .story-card,
         .contact-card,
         .metric-card,
         .illustration-panel,
@@ -4080,6 +4254,7 @@ def apply_theme() -> None:
         .schedule-card:hover,
         .pricing-card:hover,
         .timeline-card:hover,
+        .story-card:hover,
         .contact-card:hover,
         .metric-card:hover {
             transform: translateY(-3px);
@@ -4119,11 +4294,14 @@ def apply_theme() -> None:
             .schedule-card,
             .pricing-card,
             .timeline-card,
+            .story-card,
             .contact-card,
             .metric-card,
             .illustration-panel,
             .form-banner,
-            .footer-shell {
+            .footer-shell,
+            .story-spotlight,
+            .story-rail-item {
                 opacity: 0.14;
                 transform: translateY(44px) scale(0.985);
                 animation: matrika-scroll-reveal linear both;
@@ -4337,6 +4515,36 @@ def render_metric_grid(metrics: list[dict[str, str]]) -> None:
                 """,
                 unsafe_allow_html=True,
             )
+
+
+def render_story_spotlight(eyebrow: str, title: str, body: str) -> None:
+    st.markdown(
+        f"""
+        <div class="story-spotlight">
+            <span class="eyebrow">{esc(eyebrow)}</span>
+            <h3>{esc(title)}</h3>
+            <p>{esc(body)}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_story_rail(items: list[dict[str, str]]) -> None:
+    blocks = []
+    for index, item in enumerate(items, start=1):
+        blocks.append(
+            f"""
+            <div class="story-rail-item">
+                <div class="story-rail-index">{index:02d}</div>
+                <div>
+                    <h4>{esc(item.get("title", ""))}</h4>
+                    <p>{esc(item.get("body", ""))}</p>
+                </div>
+            </div>
+            """
+        )
+    st.markdown(f"<div class='story-rail'>{''.join(blocks)}</div>", unsafe_allow_html=True)
 
 
 def render_steps(steps: list[dict[str, str]]) -> None:
@@ -4595,9 +4803,9 @@ def render_top_navigation() -> None:
     with support_cols[0]:
         render_card(
             "Support",
-            f"Email {CONTACT_EMAIL} or call {CONTACT_PHONE} for admissions, timings, and class help.",
+            f"Email {CONTACT_EMAIL} or call {CONTACT_PHONE}. Leadership: {CEO_NAME}, CEO · {MD_NAME}, MD.",
             kicker="Contact",
-            meta=["IST batches", "Quick help"],
+            meta=["IST batches", "Quick help", "Leadership"],
             class_name="info-card",
         )
     with support_cols[1]:
@@ -4921,6 +5129,12 @@ def dashboard_page() -> None:
         show_schedule_preview=True,
         show_related_programs=False,
     )
+    render_story_spotlight(
+        "Digital journey",
+        "The academy is now designed to feel like a modern product story, not a stack of disconnected forms.",
+        "The homepage introduces trust, the program flow explains the fit, and the protected academy app handles the next step with calmer continuity.",
+    )
+    render_card_grid(APP_JOURNEY_CARDS, columns=3, class_name="story-card")
 
     if not learner_authenticated():
         render_section(
@@ -5431,6 +5645,12 @@ def programs_page() -> None:
         show_schedule_preview=False,
         show_related_programs=True,
     )
+    render_story_spotlight(
+        "Program story",
+        "Each path should feel intentional before a learner ever fills a form.",
+        "These routes now explain what the journey feels like, who it is for, and how the academy follows through after the first session.",
+    )
+    render_card_grid(PROGRAM_STORY_CARDS, columns=3, class_name="story-card")
     st.divider()
     render_program_comparison()
     st.divider()
@@ -5480,6 +5700,12 @@ def schedule_page() -> None:
     )
     render_illustration_panel("Schedule")
     render_card_grid(SCHEDULE_HIGHLIGHTS, columns=3, class_name="schedule-card")
+    render_story_spotlight(
+        "Schedule design",
+        "The timetable now behaves more like a planning assistant than a plain list.",
+        "That means learners can understand rhythm, flexibility, and replay support before they even choose a track.",
+    )
+    render_card_grid(SCHEDULE_STORY_CARDS, columns=3, class_name="story-card")
     st.divider()
 
     need_options = ["All journeys"] + journey_need_options()
@@ -6435,15 +6661,21 @@ def contact_page() -> None:
 
     learner = current_learner_profile()
     render_card_grid(CONTACT_CARDS, columns=3, class_name="contact-card")
+    render_story_spotlight(
+        "Academy leadership",
+        "The Matrika experience is led with both digital direction and teaching care in mind.",
+        f"{CEO_NAME} leads the academy's product and public growth direction, while {MD_NAME} stewards the teaching vision and care-first learning experience.",
+    )
+    render_card_grid(LEADERSHIP_CARDS, columns=2, class_name="story-card")
     st.divider()
 
     left, right = st.columns([0.95, 1.05])
     with left:
         render_card(
             "Support details",
-            "Studio mode is 100% online, with IST-based classes and replay support.",
+            f"Studio mode is 100% online with IST-based classes and replay support. Leadership contacts: {CEO_NAME}, CEO and {MD_NAME}, Managing Director.",
             kicker="Quick facts",
-            meta=["Zoom / Meet", "IST batches", "Replay support"],
+            meta=["Zoom / Meet", "IST batches", "Replay support", "Leadership"],
             class_name="info-card",
         )
         st.markdown("<div style='height:0.85rem'></div>", unsafe_allow_html=True)
