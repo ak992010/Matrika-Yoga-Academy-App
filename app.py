@@ -3806,7 +3806,334 @@ def apply_theme() -> None:
             50% { transform: translateY(-8px); }
         }
 
+        .topbar-shell,
+        .topnav-panel,
+        .topnav-status,
+        .hero-card,
+        .feature-card,
+        .info-card,
+        .schedule-card,
+        .pricing-card,
+        .timeline-card,
+        .contact-card,
+        .metric-card,
+        .illustration-panel,
+        .form-banner,
+        div[data-testid="stForm"] {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stApp::after {
+            content: "";
+            position: fixed;
+            top: 7%;
+            left: 4%;
+            width: min(34vw, 320px);
+            height: min(34vw, 320px);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(76, 109, 63, 0.12), rgba(76, 109, 63, 0) 72%);
+            filter: blur(8px);
+            animation: matrika-drift 14s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .topbar-shell::before,
+        .topnav-panel::before,
+        .topnav-status::before,
+        .feature-card::after,
+        .info-card::after,
+        .schedule-card::after,
+        .pricing-card::after,
+        .timeline-card::after,
+        .contact-card::after,
+        .metric-card::after,
+        .illustration-panel::before,
+        div[data-testid="stForm"]::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                115deg,
+                rgba(255, 255, 255, 0.24) 0%,
+                rgba(255, 255, 255, 0.02) 34%,
+                rgba(167, 201, 122, 0.08) 58%,
+                rgba(255, 255, 255, 0.18) 100%
+            );
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .topbar-shell,
+        .topnav-panel,
+        .topnav-status {
+            background:
+                radial-gradient(circle at top right, rgba(167, 201, 122, 0.22), rgba(167, 201, 122, 0) 34%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(238, 246, 228, 0.9));
+            border-color: rgba(127, 169, 86, 0.26);
+            box-shadow: 0 24px 70px rgba(60, 92, 47, 0.14);
+        }
+
+        .hero-card {
+            border-radius: 34px;
+            border-color: rgba(127, 169, 86, 0.28);
+            box-shadow: 0 34px 90px rgba(60, 92, 47, 0.18);
+            background:
+                radial-gradient(circle at 14% 14%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 18%),
+                linear-gradient(140deg, rgba(255, 255, 255, 0.78), rgba(233, 243, 220, 0.9) 56%, rgba(216, 232, 193, 0.92));
+        }
+
+        .hero-card::after {
+            content: "";
+            position: absolute;
+            right: 8%;
+            top: 10%;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 72%);
+            animation: matrika-pulse 6.5s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .hero-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(240px, 0.9fr);
+            gap: 1.25rem;
+            align-items: center;
+        }
+
+        .hero-copy-wrap {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-copy-wrap .eyebrow {
+            box-shadow: 0 10px 24px rgba(76, 109, 63, 0.12);
+        }
+
+        .hero-visual {
+            position: relative;
+            min-height: 310px;
+            display: grid;
+            place-items: center;
+        }
+
+        .hero-halo {
+            position: absolute;
+            width: min(27vw, 250px);
+            height: min(27vw, 250px);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(167, 201, 122, 0.34), rgba(167, 201, 122, 0.06) 55%, rgba(167, 201, 122, 0) 76%);
+            filter: blur(2px);
+            animation: matrika-breathe 7.5s ease-in-out infinite;
+        }
+
+        .hero-orbit-ring {
+            position: absolute;
+            inset: 12% 14%;
+            border-radius: 50%;
+            border: 1px solid rgba(127, 169, 86, 0.2);
+            animation: matrika-spin-slow 18s linear infinite;
+        }
+
+        .hero-orbit-ring::before,
+        .hero-orbit-ring::after {
+            content: "";
+            position: absolute;
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(167, 201, 122, 0.92), rgba(76, 109, 63, 0.9));
+            box-shadow: 0 12px 28px rgba(76, 109, 63, 0.18);
+        }
+
+        .hero-orbit-ring::before {
+            width: 0.9rem;
+            height: 0.9rem;
+            top: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .hero-orbit-ring::after {
+            width: 0.65rem;
+            height: 0.65rem;
+            bottom: 12%;
+            left: 16%;
+        }
+
+        .hero-lotus-core {
+            position: relative;
+            z-index: 1;
+            width: min(18vw, 170px);
+            height: min(18vw, 170px);
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(236, 245, 227, 0.9));
+            border: 1px solid rgba(127, 169, 86, 0.24);
+            box-shadow: 0 26px 52px rgba(76, 109, 63, 0.16);
+            font-size: clamp(2.2rem, 4vw, 3rem);
+            animation: matrika-float 8s ease-in-out infinite;
+        }
+
+        .hero-mantra-chip,
+        .hero-stat-chip {
+            position: absolute;
+            z-index: 1;
+            border-radius: 999px;
+            border: 1px solid rgba(127, 169, 86, 0.18);
+            background: rgba(255, 255, 255, 0.82);
+            box-shadow: 0 16px 32px rgba(76, 109, 63, 0.12);
+            backdrop-filter: blur(12px);
+            color: var(--ink);
+        }
+
+        .hero-mantra-chip {
+            left: 6%;
+            bottom: 10%;
+            padding: 0.6rem 0.9rem;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .hero-stat-chip {
+            width: min(15rem, 42vw);
+            padding: 0.82rem 0.95rem;
+        }
+
+        .hero-stat-chip.one {
+            right: 4%;
+            top: 12%;
+            animation: matrika-float 7.2s ease-in-out infinite;
+        }
+
+        .hero-stat-chip.two {
+            right: 10%;
+            bottom: 18%;
+            animation: matrika-float 8.4s ease-in-out infinite reverse;
+        }
+
+        .hero-stat-label {
+            display: block;
+            color: var(--forest);
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .hero-stat-value {
+            display: block;
+            margin-top: 0.18rem;
+            font-family: "Cormorant Garamond", serif;
+            font-size: 1.35rem;
+            line-height: 1;
+        }
+
+        .hero-stat-note {
+            display: block;
+            margin-top: 0.18rem;
+            color: var(--muted);
+            font-size: 0.84rem;
+            line-height: 1.45;
+        }
+
+        .pill {
+            background: rgba(255, 255, 255, 0.72);
+            box-shadow: 0 10px 22px rgba(76, 109, 63, 0.08);
+        }
+
+        .feature-card,
+        .info-card,
+        .schedule-card,
+        .pricing-card,
+        .timeline-card,
+        .contact-card,
+        .metric-card,
+        .illustration-panel,
+        .form-banner,
+        div[data-testid="stForm"] {
+            border-color: rgba(127, 169, 86, 0.2);
+            box-shadow: 0 22px 58px rgba(60, 92, 47, 0.11);
+        }
+
+        .feature-card:hover,
+        .info-card:hover,
+        .schedule-card:hover,
+        .pricing-card:hover,
+        .timeline-card:hover,
+        .contact-card:hover,
+        .metric-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 28px 72px rgba(60, 92, 47, 0.18);
+        }
+
+        .stButton > button,
+        [data-testid="stLinkButton"] a {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stButton > button::after,
+        [data-testid="stLinkButton"] a::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.16) 35%, rgba(255,255,255,0) 62%);
+            transform: translateX(-130%);
+            transition: transform 0.65s ease;
+        }
+
+        .stButton > button:hover::after,
+        [data-testid="stLinkButton"] a:hover::after {
+            transform: translateX(130%);
+        }
+
+        @keyframes matrika-drift {
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(18px, 14px, 0); }
+        }
+
+        @keyframes matrika-breathe {
+            0%, 100% { transform: scale(0.96); opacity: 0.72; }
+            50% { transform: scale(1.04); opacity: 1; }
+        }
+
+        @keyframes matrika-pulse {
+            0%, 100% { transform: scale(0.96); opacity: 0.35; }
+            50% { transform: scale(1.08); opacity: 0.62; }
+        }
+
+        @keyframes matrika-spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         @media (max-width: 980px) {
+            .hero-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-visual {
+                min-height: 250px;
+                order: -1;
+            }
+
+            .hero-mantra-chip {
+                left: 50%;
+                bottom: 6%;
+                transform: translateX(-50%);
+            }
+
+            .hero-stat-chip {
+                width: min(15rem, 74vw);
+            }
+
             .hero-title {
                 max-width: none;
             }
@@ -4441,17 +4768,37 @@ def dashboard_page() -> None:
         st.markdown(
             """
             <div class="hero-card">
-                <span class="eyebrow">Matrika Academy</span>
-                <h1 class="hero-title">A calm yoga space for learning, breath, and growth.</h1>
-                <p class="hero-copy">
-                    Keep yoga classes, guided practice, admissions, replays, and mentorship in one
-                    serene place for mothers, children, and future teachers.
-                </p>
-                <div class="pill-row">
-                    <span class="pill">Small cohorts</span>
-                    <span class="pill">Replay support</span>
-                    <span class="pill">Mentored teachers</span>
-                    <span class="pill">Live online</span>
+                <div class="hero-grid">
+                    <div class="hero-copy-wrap">
+                        <span class="eyebrow">Matrika Academy</span>
+                        <h1 class="hero-title">A calm yoga space for learning, breath, and growth.</h1>
+                        <p class="hero-copy">
+                            Keep yoga classes, guided practice, admissions, replays, and mentorship in one
+                            serene place for mothers, children, and future teachers.
+                        </p>
+                        <div class="pill-row">
+                            <span class="pill">Small cohorts</span>
+                            <span class="pill">Replay support</span>
+                            <span class="pill">Mentored teachers</span>
+                            <span class="pill">Live online</span>
+                        </div>
+                    </div>
+                    <div class="hero-visual" aria-hidden="true">
+                        <div class="hero-halo"></div>
+                        <div class="hero-orbit-ring"></div>
+                        <div class="hero-lotus-core">&#10047;</div>
+                        <div class="hero-stat-chip one">
+                            <span class="hero-stat-label">Support rhythm</span>
+                            <span class="hero-stat-value">Live + replay</span>
+                            <span class="hero-stat-note">Structured for busy families, children, and trainees.</span>
+                        </div>
+                        <div class="hero-stat-chip two">
+                            <span class="hero-stat-label">Energy</span>
+                            <span class="hero-stat-value">Modern calm</span>
+                            <span class="hero-stat-note">A spiritual feel with a cleaner, more premium digital flow.</span>
+                        </div>
+                        <div class="hero-mantra-chip">Breath · Flow · Awareness</div>
+                    </div>
                 </div>
             </div>
             """,
