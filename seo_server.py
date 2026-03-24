@@ -728,8 +728,8 @@ def landing_page_html() -> str:
       }}
       .ambient-grid {{
         background-image:
-          linear-gradient(rgba(73, 100, 65, 0.045) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(73, 100, 65, 0.045) 1px, transparent 1px);
+          linear-gradient(rgba(74, 103, 65, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(74, 103, 65, 0.045) 1px, transparent 1px);
         background-size: 64px 64px;
         mask-image: radial-gradient(circle at center, black 42%, transparent 88%);
         opacity: 0.35;
@@ -748,7 +748,7 @@ def landing_page_html() -> str:
         width: 0;
         transform-origin: left center;
         background: linear-gradient(90deg, var(--pista), var(--forest), var(--pista-bright));
-        box-shadow: 0 0 18px rgba(173, 200, 123, 0.45);
+        box-shadow: 0 0 18px rgba(196, 120, 90, 0.2);
       }}
       .shell {{
         position: relative;
@@ -960,8 +960,8 @@ def landing_page_html() -> str:
         inset: 8% 10%;
         border-radius: 26px;
         background-image:
-          linear-gradient(rgba(73, 100, 65, 0.05) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(73, 100, 65, 0.05) 1px, transparent 1px);
+          linear-gradient(rgba(74, 103, 65, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(74, 103, 65, 0.05) 1px, transparent 1px);
         background-size: 50px 50px;
         mask-image: radial-gradient(circle at center, black 44%, transparent 86%);
         opacity: 0.65;
@@ -971,7 +971,7 @@ def landing_page_html() -> str:
         position: absolute;
         inset: auto;
         border-radius: 999px;
-        border: 1px solid rgba(73, 100, 65, 0.16);
+        border: 1px solid rgba(74, 103, 65, 0.16);
         animation: matrika-breathe 8s ease-in-out infinite;
       }}
       .scene-ring.a {{
@@ -1018,7 +1018,7 @@ def landing_page_html() -> str:
         transform: translateX(-50%);
         background: url("{PUBLIC_SITE_URL}/assets/buddha_meditation.svg") center bottom / contain no-repeat;
         opacity: 0.9;
-        filter: drop-shadow(0 24px 42px rgba(73, 100, 65, 0.16));
+        filter: drop-shadow(0 24px 42px rgba(86, 58, 42, 0.12));
       }}
       .scene-floor {{
         position: absolute;
@@ -1308,7 +1308,7 @@ def landing_page_html() -> str:
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        background: rgba(173, 200, 123, 0.18);
+        background: rgba(143, 168, 118, 0.14);
         color: var(--forest);
         font-size: 1.05rem;
         flex: 0 0 auto;
@@ -1316,7 +1316,7 @@ def landing_page_html() -> str:
       }}
       .faq-item[open] summary::after {{
         transform: rotate(45deg);
-        background: rgba(173, 200, 123, 0.26);
+        background: rgba(196, 120, 90, 0.14);
       }}
       .faq-item p {{
         margin: 0.85rem 0 0;

@@ -1045,7 +1045,7 @@ def qr_code_png_bytes(data: str) -> bytes | None:
     )
     qr.add_data(clean_data)
     qr.make(fit=True)
-    image = qr.make_image(fill_color="#33512f", back_color="#f5f8ef")
+    image = qr.make_image(fill_color="#4a6741", back_color="#f7f0e8")
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
@@ -1103,11 +1103,11 @@ def render_phonepe_test_qr(
             position: relative;
             overflow: hidden;
             background:
-                radial-gradient(circle at top right, rgba(167, 201, 122, 0.28), rgba(167, 201, 122, 0) 34%),
-                linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 248, 239, 0.98) 100%);
-            border: 1px solid rgba(127, 169, 86, 0.2);
+                radial-gradient(circle at top right, rgba(196, 120, 90, 0.18), rgba(232, 168, 130, 0) 34%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 240, 232, 0.98) 100%);
+            border: 1px solid rgba(196, 120, 90, 0.18);
             border-radius: 28px;
-            box-shadow: 0 24px 60px rgba(76, 109, 63, 0.14);
+            box-shadow: 0 24px 60px rgba(86, 58, 42, 0.12);
             padding: 1.65rem 1.4rem 1.4rem;
             text-align: center;
         }}
@@ -1118,7 +1118,7 @@ def render_phonepe_test_qr(
             width: 12rem;
             height: 12rem;
             border-radius: 999px;
-            background: radial-gradient(circle, rgba(127, 169, 86, 0.2), rgba(127, 169, 86, 0) 70%);
+            background: radial-gradient(circle, rgba(196, 120, 90, 0.18), rgba(232, 168, 130, 0) 70%);
             pointer-events: none;
         }}
         .phonepe-test-brand {{
@@ -1159,7 +1159,7 @@ def render_phonepe_test_qr(
             text-transform: uppercase;
         }}
         .phonepe-test-theme {{
-            color: #3f5a31;
+            color: #4a6741;
             font-size: 0.78rem;
             font-weight: 800;
             letter-spacing: 0.16em;
@@ -1167,7 +1167,7 @@ def render_phonepe_test_qr(
             text-transform: uppercase;
         }}
         .phonepe-test-caption {{
-            color: #20263b;
+            color: #3d2b1f;
             font-size: 1rem;
             line-height: 1.5;
             margin: 0 0 1.35rem;
@@ -1191,7 +1191,7 @@ def render_phonepe_test_qr(
             width: 100%;
         }}
         .phonepe-test-payee {{
-            color: #151827;
+            color: #3d2b1f;
             font-size: 1.15rem;
             font-weight: 900;
             letter-spacing: 0.05em;
@@ -1201,7 +1201,7 @@ def render_phonepe_test_qr(
             text-transform: uppercase;
         }}
         .phonepe-test-upi {{
-            color: #446236;
+            color: #705c4d;
             font-size: 0.92rem;
             font-weight: 700;
             margin-top: 0.35rem;
@@ -1226,10 +1226,10 @@ def render_phonepe_test_qr(
             z-index: 1;
         }}
         .phonepe-test-chip {{
-            background: rgba(167, 201, 122, 0.16);
-            border: 1px solid rgba(127, 169, 86, 0.18);
+            background: rgba(232, 168, 130, 0.14);
+            border: 1px solid rgba(196, 120, 90, 0.16);
             border-radius: 999px;
-            color: #3f5a31;
+            color: #4a6741;
             font-size: 0.75rem;
             font-weight: 800;
             letter-spacing: 0.04em;
@@ -2947,10 +2947,10 @@ def apply_theme() -> None:
             position: relative;
             isolation: isolate;
             background:
-                radial-gradient(circle at 10% 16%, rgba(167, 201, 122, 0.22), transparent 24%),
-                radial-gradient(circle at 84% 10%, rgba(127, 169, 86, 0.18), transparent 20%),
-                radial-gradient(circle at 50% 100%, rgba(214, 230, 191, 0.45), transparent 28%),
-                linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 56%, #f2f7ea 100%);
+                radial-gradient(circle at 10% 16%, rgba(196, 120, 90, 0.14), transparent 24%),
+                radial-gradient(circle at 84% 10%, rgba(196, 120, 90, 0.16), transparent 20%),
+                radial-gradient(circle at 50% 100%, rgba(232, 168, 130, 0.16), transparent 28%),
+                linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 56%, var(--bg-deep) 100%);
         }
 
         .stApp::before {
@@ -2967,7 +2967,7 @@ def apply_theme() -> None:
             opacity: 0.2;
             pointer-events: none;
             z-index: 0;
-            filter: drop-shadow(0 20px 34px rgba(76, 109, 63, 0.12));
+            filter: drop-shadow(0 20px 34px rgba(86, 58, 42, 0.12));
         }
 
         [data-testid="stSidebar"],
@@ -3008,7 +3008,7 @@ def apply_theme() -> None:
 
         [data-testid="stSidebar"] {
             background:
-                linear-gradient(180deg, rgba(248, 253, 241, 0.97), rgba(232, 241, 217, 0.95));
+                linear-gradient(180deg, rgba(255, 250, 245, 0.95), rgba(244, 234, 223, 0.92));
             border-right: 1px solid var(--line);
             backdrop-filter: blur(12px);
         }
@@ -3053,7 +3053,7 @@ def apply_theme() -> None:
             height: 64px;
             border-radius: 20px;
             object-fit: cover;
-            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.18);
+            box-shadow: 0 12px 26px rgba(86, 58, 42, 0.16);
         }
 
         .sidebar-brand h2 {
@@ -3093,7 +3093,7 @@ def apply_theme() -> None:
             font-family: "Cormorant Garamond", serif;
             font-size: 2rem;
             font-weight: 700;
-            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.18);
+            box-shadow: 0 12px 26px rgba(86, 58, 42, 0.16);
         }
 
         .topbar-shell {
@@ -3106,7 +3106,7 @@ def apply_theme() -> None:
             margin-bottom: 1rem;
             border-radius: 30px;
             border: 1px solid var(--line);
-            background: linear-gradient(135deg, rgba(251, 255, 245, 0.9), rgba(232, 241, 217, 0.86));
+            background: linear-gradient(135deg, rgba(255, 250, 245, 0.88), rgba(244, 234, 223, 0.8));
             box-shadow: var(--shadow);
             backdrop-filter: blur(12px);
             animation: matrika-fade-up 0.55s ease both;
@@ -3132,7 +3132,7 @@ def apply_theme() -> None:
             height: 58px;
             border-radius: 18px;
             object-fit: cover;
-            box-shadow: 0 12px 24px rgba(76, 109, 63, 0.16);
+            box-shadow: 0 12px 24px rgba(86, 58, 42, 0.14);
         }
 
         .brand-lockup {
@@ -3167,12 +3167,12 @@ def apply_theme() -> None:
             min-height: 2.5rem;
             padding: 0.55rem 0.9rem;
             border-radius: 999px;
-            border: 1px solid rgba(76, 109, 63, 0.18);
+            border: 1px solid rgba(86, 58, 42, 0.16);
             background: rgba(255, 249, 244, 0.92);
             color: var(--ink) !important;
             text-decoration: none;
             font-weight: 800;
-            box-shadow: 0 10px 20px rgba(76, 109, 63, 0.08);
+            box-shadow: 0 10px 20px rgba(86, 58, 42, 0.08);
         }
 
         .topbar-chip:hover {
@@ -3190,7 +3190,7 @@ def apply_theme() -> None:
             margin-bottom: 0.9rem;
             border-radius: 26px;
             border: 1px solid var(--line);
-            background: linear-gradient(135deg, rgba(251, 255, 245, 0.92), rgba(234, 243, 220, 0.86));
+            background: linear-gradient(135deg, rgba(255, 250, 245, 0.9), rgba(244, 234, 223, 0.76));
             box-shadow: var(--shadow);
             animation: matrika-fade-up 0.5s ease both;
         }
@@ -3205,9 +3205,9 @@ def apply_theme() -> None:
             margin: 0 0 0.9rem;
             padding: 0.9rem 1rem;
             border-radius: 22px;
-            border: 1px solid rgba(127, 169, 86, 0.22);
-            background: rgba(251, 255, 245, 0.88);
-            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.08);
+            border: 1px solid rgba(196, 120, 90, 0.18);
+            background: rgba(255, 250, 245, 0.86);
+            box-shadow: 0 12px 26px rgba(86, 58, 42, 0.08);
             color: var(--muted);
             line-height: 1.6;
         }
@@ -3242,15 +3242,15 @@ def apply_theme() -> None:
         }
 
         .flash-banner-success {
-            background: linear-gradient(135deg, rgba(251, 255, 245, 0.96), rgba(230, 241, 213, 0.96));
+            background: linear-gradient(135deg, rgba(255, 250, 245, 0.94), rgba(240, 223, 210, 0.82));
         }
 
         .flash-banner-info {
-            background: linear-gradient(135deg, rgba(251, 255, 245, 0.95), rgba(238, 246, 229, 0.95));
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.95), rgba(244, 234, 223, 0.84));
         }
 
         .flash-banner-warning {
-            background: linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(233, 241, 214, 0.96));
+            background: linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(244, 234, 223, 0.88));
         }
 
         .page-loader-overlay {
@@ -3261,7 +3261,7 @@ def apply_theme() -> None:
             align-items: center;
             justify-content: center;
             padding: 1rem;
-            background: rgba(245, 248, 239, 0.62);
+            background: rgba(247, 240, 232, 0.66);
             backdrop-filter: blur(6px);
         }
 
@@ -3275,7 +3275,7 @@ def apply_theme() -> None:
             padding: 1.25rem 1.4rem;
             border-radius: 28px;
             border: 1px solid var(--line);
-            background: rgba(252, 255, 247, 0.96);
+            background: rgba(255, 250, 245, 0.94);
             box-shadow: 0 24px 60px rgba(60, 92, 47, 0.18);
         }
 
@@ -3303,7 +3303,7 @@ def apply_theme() -> None:
             align-items: center;
             gap: 0.35rem;
             border-radius: 999px;
-            background: rgba(167, 201, 122, 0.18);
+            background: rgba(143, 168, 118, 0.14);
             color: var(--forest);
             font-size: 0.72rem;
             font-weight: 800;
@@ -3317,7 +3317,7 @@ def apply_theme() -> None:
             overflow: hidden;
             padding: clamp(1.5rem, 3vw, 2.4rem);
             background:
-                linear-gradient(145deg, rgba(251, 255, 245, 0.92), rgba(229, 239, 213, 0.8));
+                linear-gradient(145deg, rgba(255, 250, 245, 0.9), rgba(244, 234, 223, 0.78));
             animation: matrika-fade-up 0.65s ease both;
         }
 
@@ -3345,8 +3345,8 @@ def apply_theme() -> None:
             border-radius: 50%;
             background: radial-gradient(
                 circle,
-                rgba(167, 201, 122, 0.28) 0%,
-                rgba(167, 201, 122, 0.08) 52%,
+                rgba(196, 120, 90, 0.18) 0%,
+                rgba(196, 120, 90, 0.08) 52%,
                 transparent 72%
             );
             pointer-events: none;
@@ -3383,8 +3383,8 @@ def apply_theme() -> None:
             display: inline-flex;
             align-items: center;
             border-radius: 999px;
-            background: rgba(251, 255, 245, 0.88);
-            border: 1px solid rgba(76, 109, 63, 0.16);
+            background: rgba(255, 250, 245, 0.86);
+            border: 1px solid rgba(86, 58, 42, 0.14);
             color: var(--forest);
             font-weight: 700;
             font-size: 0.86rem;
@@ -3394,7 +3394,7 @@ def apply_theme() -> None:
         .page-intro {
             padding: 1.15rem 1.2rem 1.1rem;
             margin-bottom: 1rem;
-            background: linear-gradient(135deg, rgba(251, 255, 245, 0.9), rgba(230, 241, 214, 0.82));
+            background: linear-gradient(135deg, rgba(255, 250, 245, 0.88), rgba(240, 223, 210, 0.68));
         }
 
         .page-intro h1 {
@@ -3473,7 +3473,7 @@ def apply_theme() -> None:
         .contact-card:hover,
         .metric-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 22px 42px rgba(76, 109, 63, 0.16);
+            box-shadow: 0 22px 42px rgba(86, 58, 42, 0.14);
             border-color: rgba(127, 169, 86, 0.28);
         }
 
@@ -3493,8 +3493,8 @@ def apply_theme() -> None:
 
         .story-card {
             background:
-                radial-gradient(circle at top right, rgba(167, 201, 122, 0.16), rgba(167, 201, 122, 0) 34%),
-                linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(241, 247, 233, 0.92));
+                radial-gradient(circle at top right, rgba(232, 168, 130, 0.14), rgba(232, 168, 130, 0) 34%),
+                linear-gradient(135deg, rgba(255, 252, 248, 0.82), rgba(244, 234, 223, 0.88));
             min-height: 100%;
         }
 
@@ -3535,7 +3535,7 @@ def apply_theme() -> None:
             display: inline-flex;
             align-items: center;
             border-radius: 999px;
-            background: rgba(167, 201, 122, 0.18);
+            background: rgba(143, 168, 118, 0.14);
             color: var(--forest);
             padding: 0.36rem 0.64rem;
             font-size: 0.78rem;
@@ -3544,7 +3544,7 @@ def apply_theme() -> None:
 
         .metric-card {
             padding: 1rem;
-            background: linear-gradient(180deg, rgba(251, 255, 245, 0.86), rgba(237, 245, 228, 0.82));
+            background: linear-gradient(180deg, rgba(255, 250, 245, 0.86), rgba(244, 234, 223, 0.78));
             transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
             animation: matrika-fade-up 0.72s ease both;
         }
@@ -3582,9 +3582,9 @@ def apply_theme() -> None:
             align-items: start;
             padding: 0.95rem 1rem;
             border-radius: 22px;
-            background: rgba(251, 255, 245, 0.76);
+            background: rgba(255, 250, 245, 0.82);
             border: 1px solid var(--line);
-            box-shadow: 0 10px 24px rgba(76, 109, 63, 0.08);
+            box-shadow: 0 10px 24px rgba(86, 58, 42, 0.08);
         }
 
         .timeline-index {
@@ -3616,11 +3616,11 @@ def apply_theme() -> None:
             overflow: hidden;
             padding: 1.2rem 1.2rem 1.15rem;
             border-radius: 30px;
-            border: 1px solid rgba(127, 169, 86, 0.2);
+            border: 1px solid rgba(196, 120, 90, 0.18);
             background:
                 radial-gradient(circle at top left, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 22%),
-                linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(236, 245, 227, 0.9));
-            box-shadow: 0 16px 38px rgba(38, 61, 42, 0.08);
+                linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(244, 234, 223, 0.82));
+            box-shadow: 0 16px 38px rgba(86, 58, 42, 0.08);
             margin: 1rem 0 1.15rem;
             animation: matrika-fade-up 0.62s ease both;
         }
@@ -3632,7 +3632,7 @@ def apply_theme() -> None:
             width: 220px;
             height: 220px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(167, 201, 122, 0.22), rgba(167, 201, 122, 0) 68%);
+            background: radial-gradient(circle, rgba(196, 120, 90, 0.14), rgba(232, 168, 130, 0) 68%);
             pointer-events: none;
         }
 
@@ -3662,9 +3662,9 @@ def apply_theme() -> None:
             align-items: start;
             padding: 1rem 1.05rem;
             border-radius: 24px;
-            border: 1px solid rgba(127, 169, 86, 0.18);
+            border: 1px solid rgba(196, 120, 90, 0.16);
             background: rgba(255, 255, 255, 0.76);
-            box-shadow: 0 12px 28px rgba(38, 61, 42, 0.06);
+            box-shadow: 0 12px 28px rgba(86, 58, 42, 0.06);
             animation: matrika-fade-up 0.58s ease both;
         }
 
@@ -3674,7 +3674,7 @@ def apply_theme() -> None:
             border-radius: 999px;
             display: grid;
             place-items: center;
-            background: linear-gradient(135deg, rgba(173, 200, 123, 0.98), rgba(73, 100, 65, 0.98));
+            background: linear-gradient(135deg, rgba(196, 120, 90, 0.94), rgba(74, 103, 65, 0.88));
             color: white;
             font-size: 0.88rem;
             font-weight: 800;
@@ -3694,10 +3694,10 @@ def apply_theme() -> None:
 
         .callout {
             border-radius: 22px;
-            border: 1px solid rgba(127, 169, 86, 0.26);
-            background: linear-gradient(135deg, rgba(251, 255, 245, 0.9), rgba(236, 245, 227, 0.84));
+            border: 1px solid rgba(196, 120, 90, 0.22);
+            background: linear-gradient(135deg, rgba(255, 250, 245, 0.88), rgba(244, 234, 223, 0.82));
             padding: 1rem 1.1rem;
-            box-shadow: 0 14px 28px rgba(76, 109, 63, 0.08);
+            box-shadow: 0 14px 28px rgba(86, 58, 42, 0.08);
         }
 
         .illustration-panel {
@@ -3710,9 +3710,9 @@ def apply_theme() -> None:
             padding: 1.2rem 1.2rem 1.1rem;
             margin: 1rem 0 1.2rem;
             border-radius: 28px;
-            border: 1px solid rgba(127, 169, 86, 0.24);
-            background: linear-gradient(135deg, rgba(251, 255, 245, 0.94), rgba(232, 241, 217, 0.78));
-            box-shadow: 0 18px 38px rgba(76, 109, 63, 0.1);
+            border: 1px solid rgba(196, 120, 90, 0.2);
+            background: linear-gradient(135deg, rgba(255, 250, 245, 0.92), rgba(244, 234, 223, 0.76));
+            box-shadow: 0 18px 38px rgba(86, 58, 42, 0.1);
             animation: matrika-fade-up 0.58s ease both;
         }
 
@@ -3723,7 +3723,7 @@ def apply_theme() -> None:
             width: 240px;
             height: 240px;
             border-radius: 999px;
-            background: radial-gradient(circle, rgba(167, 201, 122, 0.24), rgba(167, 201, 122, 0) 70%);
+            background: radial-gradient(circle, rgba(196, 120, 90, 0.18), rgba(232, 168, 130, 0) 70%);
             pointer-events: none;
         }
 
@@ -3756,7 +3756,7 @@ def apply_theme() -> None:
             position: absolute;
             inset: 18% 14%;
             border-radius: 999px;
-            border: 1px solid rgba(127, 169, 86, 0.22);
+            border: 1px solid rgba(196, 120, 90, 0.18);
             animation: matrika-float 7s ease-in-out infinite;
         }
 
@@ -3766,7 +3766,7 @@ def apply_theme() -> None:
             position: absolute;
             inset: 12%;
             border-radius: 999px;
-            border: 1px dashed rgba(127, 169, 86, 0.18);
+            border: 1px dashed rgba(196, 120, 90, 0.16);
         }
 
         .illustration-orbit::after {
@@ -3781,10 +3781,10 @@ def apply_theme() -> None:
             display: grid;
             place-items: center;
             border-radius: 999px;
-            background: linear-gradient(135deg, rgba(167, 201, 122, 0.94), rgba(76, 109, 63, 0.94));
+            background: linear-gradient(135deg, rgba(196, 120, 90, 0.92), rgba(74, 103, 65, 0.86));
             color: white;
             font-size: 3rem;
-            box-shadow: 0 16px 34px rgba(76, 109, 63, 0.18);
+            box-shadow: 0 16px 34px rgba(86, 58, 42, 0.16);
         }
 
         .illustration-symbol::before {
@@ -3792,7 +3792,7 @@ def apply_theme() -> None:
             position: absolute;
             inset: -1.15rem;
             border-radius: 999px;
-            border: 1px solid rgba(127, 169, 86, 0.22);
+            border: 1px solid rgba(196, 120, 90, 0.18);
         }
 
         .illustration-mantra {
@@ -3802,8 +3802,8 @@ def apply_theme() -> None:
             transform: translateX(-50%);
             padding: 0.42rem 0.78rem;
             border-radius: 999px;
-            background: rgba(251, 255, 245, 0.9);
-            border: 1px solid rgba(127, 169, 86, 0.2);
+            background: rgba(255, 250, 245, 0.88);
+            border: 1px solid rgba(196, 120, 90, 0.18);
             color: var(--forest);
             font-size: 0.8rem;
             font-weight: 800;
@@ -3821,9 +3821,9 @@ def apply_theme() -> None:
             padding: 1rem 1.05rem;
             margin-bottom: 0.85rem;
             border-radius: 22px;
-            border: 1px solid rgba(127, 169, 86, 0.22);
-            background: linear-gradient(135deg, rgba(251, 255, 245, 0.92), rgba(234, 243, 220, 0.86));
-            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.08);
+            border: 1px solid rgba(196, 120, 90, 0.18);
+            background: linear-gradient(135deg, rgba(255, 250, 245, 0.9), rgba(244, 234, 223, 0.76));
+            box-shadow: 0 12px 26px rgba(86, 58, 42, 0.08);
             animation: matrika-fade-up 0.5s ease both;
         }
 
@@ -3836,7 +3836,7 @@ def apply_theme() -> None:
             background: linear-gradient(135deg, var(--pista), var(--forest));
             color: white;
             font-size: 1.05rem;
-            box-shadow: 0 10px 20px rgba(76, 109, 63, 0.16);
+            box-shadow: 0 10px 20px rgba(86, 58, 42, 0.14);
         }
 
         .form-banner h3 {
@@ -3856,7 +3856,7 @@ def apply_theme() -> None:
             padding: 1rem 1.15rem;
             border-radius: 24px;
             border: 1px solid var(--line);
-            background: rgba(251, 255, 245, 0.84);
+            background: rgba(255, 250, 245, 0.84);
             box-shadow: var(--shadow);
         }
 
@@ -3873,23 +3873,23 @@ def apply_theme() -> None:
             color: white;
             font-weight: 800;
             padding: 0.68rem 1rem;
-            box-shadow: 0 12px 24px rgba(127, 169, 86, 0.26);
+            box-shadow: 0 12px 24px rgba(196, 120, 90, 0.18);
             transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
         }
 
         .stButton > button:hover {
             transform: translateY(-1px);
             filter: brightness(0.98);
-            box-shadow: 0 14px 28px rgba(76, 109, 63, 0.24);
+            box-shadow: 0 14px 28px rgba(86, 58, 42, 0.18);
         }
 
         [data-testid="stLinkButton"] a {
             border-radius: 999px !important;
-            border: 1px solid rgba(76, 109, 63, 0.16) !important;
-            background: rgba(251, 255, 245, 0.86) !important;
+            border: 1px solid rgba(86, 58, 42, 0.14) !important;
+            background: rgba(255, 250, 245, 0.86) !important;
             color: var(--ink) !important;
             font-weight: 800 !important;
-            box-shadow: 0 10px 20px rgba(76, 109, 63, 0.08) !important;
+            box-shadow: 0 10px 20px rgba(86, 58, 42, 0.08) !important;
         }
 
         div[data-baseweb="input"] > div,
@@ -3898,8 +3898,8 @@ def apply_theme() -> None:
         [data-testid="stNumberInput"] input,
         [data-testid="stTextInput"] input {
             border-radius: 18px !important;
-            border: 1px solid rgba(76, 109, 63, 0.18) !important;
-            background: rgba(251, 255, 245, 0.94) !important;
+            border: 1px solid rgba(86, 58, 42, 0.16) !important;
+            background: rgba(255, 250, 245, 0.92) !important;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
             color: var(--ink) !important;
         }
@@ -3923,9 +3923,9 @@ def apply_theme() -> None:
             overflow: hidden;
             padding: 1.05rem 1rem 0.35rem;
             border-radius: 28px;
-            border: 1px solid rgba(127, 169, 86, 0.24);
-            background: linear-gradient(145deg, rgba(251, 255, 245, 0.95), rgba(234, 243, 220, 0.8));
-            box-shadow: 0 18px 36px rgba(76, 109, 63, 0.1);
+            border: 1px solid rgba(196, 120, 90, 0.2);
+            background: linear-gradient(145deg, rgba(255, 250, 245, 0.94), rgba(244, 234, 223, 0.72));
+            box-shadow: 0 18px 36px rgba(86, 58, 42, 0.1);
             margin-bottom: 0.4rem;
             animation: matrika-fade-up 0.62s ease both;
         }
@@ -3972,13 +3972,13 @@ def apply_theme() -> None:
         .stSpinner > div {
             padding: 1rem 1.15rem;
             border-radius: 22px;
-            background: rgba(251, 255, 245, 0.94);
+            background: rgba(255, 250, 245, 0.92);
             border: 1px solid var(--line);
             box-shadow: var(--shadow);
         }
 
         hr {
-            border-color: rgba(76, 109, 63, 0.12);
+            border-color: rgba(86, 58, 42, 0.12);
         }
 
         @keyframes matrika-fade-up {
@@ -4024,7 +4024,7 @@ def apply_theme() -> None:
             width: min(34vw, 320px);
             height: min(34vw, 320px);
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(76, 109, 63, 0.12), rgba(76, 109, 63, 0) 72%);
+            background: radial-gradient(circle, rgba(86, 58, 42, 0.12), rgba(232, 168, 130, 0) 72%);
             filter: blur(8px);
             animation: matrika-drift 14s ease-in-out infinite;
             pointer-events: none;
@@ -4050,7 +4050,7 @@ def apply_theme() -> None:
                 115deg,
                 rgba(255, 255, 255, 0.24) 0%,
                 rgba(255, 255, 255, 0.02) 34%,
-                rgba(167, 201, 122, 0.08) 58%,
+                rgba(196, 120, 90, 0.08) 58%,
                 rgba(255, 255, 255, 0.18) 100%
             );
             opacity: 0.7;
@@ -4061,19 +4061,19 @@ def apply_theme() -> None:
         .topnav-panel,
         .topnav-status {
             background:
-                radial-gradient(circle at top right, rgba(167, 201, 122, 0.22), rgba(167, 201, 122, 0) 34%),
-                linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(238, 246, 228, 0.9));
-            border-color: rgba(127, 169, 86, 0.26);
-            box-shadow: 0 12px 34px rgba(38, 61, 42, 0.08);
+                radial-gradient(circle at top right, rgba(196, 120, 90, 0.14), rgba(232, 168, 130, 0) 34%),
+                linear-gradient(135deg, rgba(255, 252, 248, 0.76), rgba(244, 234, 223, 0.8));
+            border-color: rgba(196, 120, 90, 0.22);
+            box-shadow: 0 12px 34px rgba(86, 58, 42, 0.08);
         }
 
         .hero-card {
             border-radius: 34px;
             border-color: rgba(127, 169, 86, 0.28);
-            box-shadow: 0 18px 48px rgba(38, 61, 42, 0.08);
+            box-shadow: 0 18px 48px rgba(86, 58, 42, 0.08);
             background:
                 radial-gradient(circle at 14% 14%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 18%),
-                linear-gradient(140deg, rgba(255, 255, 255, 0.78), rgba(233, 243, 220, 0.9) 56%, rgba(216, 232, 193, 0.92));
+                linear-gradient(140deg, rgba(255, 255, 255, 0.78), rgba(244, 234, 223, 0.78) 56%, rgba(232, 168, 130, 0.14));
         }
 
         .hero-card::after {
@@ -4104,7 +4104,7 @@ def apply_theme() -> None:
         }
 
         .hero-copy-wrap .eyebrow {
-            box-shadow: 0 10px 24px rgba(76, 109, 63, 0.12);
+            box-shadow: 0 10px 24px rgba(86, 58, 42, 0.12);
         }
 
         .hero-visual {
@@ -4119,7 +4119,7 @@ def apply_theme() -> None:
             width: min(27vw, 250px);
             height: min(27vw, 250px);
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(167, 201, 122, 0.34), rgba(167, 201, 122, 0.06) 55%, rgba(167, 201, 122, 0) 76%);
+            background: radial-gradient(circle, rgba(196, 120, 90, 0.22), rgba(232, 168, 130, 0.05) 55%, rgba(232, 168, 130, 0) 76%);
             filter: blur(2px);
             animation: matrika-breathe 7.5s ease-in-out infinite;
         }
@@ -4128,7 +4128,7 @@ def apply_theme() -> None:
             position: absolute;
             inset: 12% 14%;
             border-radius: 50%;
-            border: 1px solid rgba(127, 169, 86, 0.2);
+            border: 1px solid rgba(196, 120, 90, 0.18);
             animation: matrika-spin-slow 18s linear infinite;
         }
 
@@ -4137,8 +4137,8 @@ def apply_theme() -> None:
             content: "";
             position: absolute;
             border-radius: 999px;
-            background: linear-gradient(135deg, rgba(167, 201, 122, 0.92), rgba(76, 109, 63, 0.9));
-            box-shadow: 0 12px 28px rgba(76, 109, 63, 0.18);
+            background: linear-gradient(135deg, rgba(196, 120, 90, 0.9), rgba(74, 103, 65, 0.86));
+            box-shadow: 0 12px 28px rgba(86, 58, 42, 0.16);
         }
 
         .hero-orbit-ring::before {
@@ -4164,9 +4164,9 @@ def apply_theme() -> None:
             display: grid;
             place-items: center;
             border-radius: 50%;
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(236, 245, 227, 0.9));
-            border: 1px solid rgba(127, 169, 86, 0.24);
-            box-shadow: 0 26px 52px rgba(76, 109, 63, 0.16);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(244, 234, 223, 0.82));
+            border: 1px solid rgba(196, 120, 90, 0.2);
+            box-shadow: 0 26px 52px rgba(86, 58, 42, 0.14);
             font-size: clamp(2.2rem, 4vw, 3rem);
             animation: matrika-float 8s ease-in-out infinite;
         }
@@ -4176,9 +4176,9 @@ def apply_theme() -> None:
             position: absolute;
             z-index: 1;
             border-radius: 999px;
-            border: 1px solid rgba(127, 169, 86, 0.18);
-            background: rgba(255, 255, 255, 0.82);
-            box-shadow: 0 16px 32px rgba(76, 109, 63, 0.12);
+            border: 1px solid rgba(196, 120, 90, 0.16);
+            background: rgba(255, 252, 248, 0.82);
+            box-shadow: 0 16px 32px rgba(86, 58, 42, 0.12);
             backdrop-filter: blur(12px);
             color: var(--ink);
         }
@@ -4238,7 +4238,7 @@ def apply_theme() -> None:
 
         .pill {
             background: rgba(255, 255, 255, 0.72);
-            box-shadow: 0 10px 22px rgba(76, 109, 63, 0.08);
+            box-shadow: 0 10px 22px rgba(86, 58, 42, 0.08);
         }
 
         .feature-card,
@@ -4251,8 +4251,8 @@ def apply_theme() -> None:
         .illustration-panel,
         .form-banner,
         div[data-testid="stForm"] {
-            border-color: rgba(127, 169, 86, 0.2);
-            box-shadow: 0 10px 28px rgba(38, 61, 42, 0.06);
+            border-color: rgba(196, 120, 90, 0.18);
+            box-shadow: 0 10px 28px rgba(86, 58, 42, 0.06);
         }
 
         .feature-card:hover,
