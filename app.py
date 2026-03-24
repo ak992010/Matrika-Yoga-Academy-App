@@ -2892,23 +2892,37 @@ def apply_theme() -> None:
     buddha_background = buddha_background_data_uri()
     css = """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;700;800&display=swap');
+        @view-transition {
+            navigation: auto;
+        }
+
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+            animation-duration: 0.6s;
+            animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+        }
 
         :root {
-            --bg: #f7faf2;
-            --bg-soft: #edf4e4;
-            --bg-deep: #deebcb;
-            --ink: #18251d;
-            --muted: #59695f;
-            --pista: #a7c97a;
-            --pista-deep: #88ae60;
-            --forest: #39513a;
-            --moss: #29402c;
-            --lotus: #fcfef9;
-            --mist: #f1f6ea;
-            --line: rgba(57, 81, 58, 0.12);
-            --card: rgba(255, 255, 255, 0.68);
-            --shadow: 0 12px 36px rgba(38, 61, 42, 0.08);
+            --bg: #f7f0e8;
+            --bg-soft: #fbf5ef;
+            --bg-deep: #f0dfd2;
+            --ink: #3d2b1f;
+            --muted: #705c4d;
+            --pista: #8fa876;
+            --pista-deep: #7a9564;
+            --forest: #4a6741;
+            --moss: #425339;
+            --lotus: #fffaf5;
+            --mist: #f4eadf;
+            --terracotta: #c4785a;
+            --terracotta-deep: #a96045;
+            --blush: #e8a882;
+            --violet: #c4a8c8;
+            --line: rgba(74, 103, 65, 0.13);
+            --card: rgba(255, 250, 245, 0.72);
+            --shadow: 0 14px 40px rgba(86, 58, 42, 0.08);
         }
 
         * {
@@ -2918,7 +2932,7 @@ def apply_theme() -> None:
         html,
         body,
         [class*="css"] {
-            font-family: "Instrument Sans", sans-serif;
+            font-family: "DM Sans", sans-serif;
             color: var(--ink);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -2987,9 +3001,9 @@ def apply_theme() -> None:
         h2,
         h3,
         h4 {
-            font-family: "Instrument Sans", sans-serif;
-            color: var(--ink);
-            letter-spacing: -0.035em;
+            font-family: "Cormorant Garamond", serif;
+            color: var(--forest);
+            letter-spacing: -0.03em;
         }
 
         [data-testid="stSidebar"] {
@@ -3128,9 +3142,9 @@ def apply_theme() -> None:
         }
 
         .brand-label {
-            font-family: "Instrument Sans", sans-serif;
+            font-family: "Cormorant Garamond", serif;
             font-size: 1.68rem;
-            font-weight: 700;
+            font-weight: 600;
             line-height: 0.9;
         }
 
@@ -3154,7 +3168,7 @@ def apply_theme() -> None:
             padding: 0.55rem 0.9rem;
             border-radius: 999px;
             border: 1px solid rgba(76, 109, 63, 0.18);
-            background: rgba(251, 255, 245, 0.92);
+            background: rgba(255, 249, 244, 0.92);
             color: var(--ink) !important;
             text-decoration: none;
             font-weight: 800;
@@ -3167,8 +3181,8 @@ def apply_theme() -> None:
         }
 
         .site-chip {
-            background: linear-gradient(135deg, rgba(214, 230, 191, 0.92), rgba(167, 201, 122, 0.36)) !important;
-            border-color: rgba(127, 169, 86, 0.3) !important;
+            background: linear-gradient(135deg, rgba(232, 168, 130, 0.24), rgba(196, 120, 90, 0.16)) !important;
+            border-color: rgba(196, 120, 90, 0.24) !important;
         }
 
         .topnav-panel {
@@ -3268,28 +3282,20 @@ def apply_theme() -> None:
         .page-loader-spinner {
             width: 60px;
             height: 60px;
-            border-radius: 999px;
-            border: 5px solid rgba(167, 201, 122, 0.2);
-            border-top-color: var(--pista-deep);
-            border-right-color: var(--forest);
-            animation: matrika-spin 0.9s linear infinite;
-        }
-
-        .page-loader-title {
-            font-family: "Cormorant Garamond", serif;
-            font-size: 1.9rem;
-            line-height: 0.95;
+            border-radius: 42% 58% 52% 48% / 45% 42% 58% 55%;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 28%),
+                conic-gradient(from 0deg, var(--terracotta), var(--blush), var(--pista), var(--violet), var(--terracotta));
+            box-shadow:
+                0 0 0 8px rgba(196, 120, 90, 0.08),
+                0 18px 36px rgba(86, 58, 42, 0.12);
+            animation: matrika-petal-spin 4s ease-in-out infinite;
         }
 
         .page-loader-copy {
             color: var(--muted);
             font-size: 0.96rem;
             line-height: 1.55;
-        }
-
-        @keyframes matrika-spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
         }
 
         .eyebrow {
@@ -3553,7 +3559,7 @@ def apply_theme() -> None:
 
         .metric-value {
             margin: 0.2rem 0 0.2rem;
-            font-family: "Instrument Sans", sans-serif;
+            font-family: "DM Sans", sans-serif;
             font-size: 2rem;
             line-height: 1;
             font-weight: 700;
@@ -4216,7 +4222,7 @@ def apply_theme() -> None:
         .hero-stat-value {
             display: block;
             margin-top: 0.18rem;
-            font-family: "Instrument Sans", sans-serif;
+            font-family: "DM Sans", sans-serif;
             font-size: 1.12rem;
             font-weight: 700;
             line-height: 1;
@@ -4265,11 +4271,22 @@ def apply_theme() -> None:
         [data-testid="stLinkButton"] a {
             position: relative;
             overflow: hidden;
-            background: rgba(255, 255, 255, 0.82) !important;
             color: var(--ink) !important;
-            border: 1px solid rgba(57, 81, 58, 0.1) !important;
-            box-shadow: 0 8px 24px rgba(38, 61, 42, 0.07) !important;
             backdrop-filter: blur(18px);
+        }
+
+        .stButton > button {
+            background: linear-gradient(135deg, var(--terracotta), var(--blush)) !important;
+            color: white !important;
+            border: 1px solid rgba(196, 120, 90, 0.16) !important;
+            box-shadow: 0 12px 28px rgba(196, 120, 90, 0.18) !important;
+            transition: transform 0.6s ease, box-shadow 0.6s ease, filter 0.6s ease;
+        }
+
+        [data-testid="stLinkButton"] a {
+            background: rgba(255, 249, 244, 0.9) !important;
+            border: 1px solid rgba(74, 103, 65, 0.12) !important;
+            box-shadow: 0 8px 24px rgba(86, 58, 42, 0.07) !important;
         }
 
         .stButton > button::after,
@@ -4285,6 +4302,12 @@ def apply_theme() -> None:
         .stButton > button:hover::after,
         [data-testid="stLinkButton"] a:hover::after {
             transform: translateX(130%);
+        }
+
+        .stButton > button:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.01);
+            box-shadow: 0 18px 36px rgba(196, 120, 90, 0.22) !important;
         }
 
         @supports (animation-timeline: view()) {
@@ -4338,6 +4361,11 @@ def apply_theme() -> None:
         @keyframes matrika-breathe {
             0%, 100% { transform: scale(0.96); opacity: 0.72; }
             50% { transform: scale(1.04); opacity: 1; }
+        }
+
+        @keyframes matrika-petal-spin {
+            0%, 100% { transform: rotate(0deg) scale(0.96); }
+            50% { transform: rotate(180deg) scale(1.08); }
         }
 
         @keyframes matrika-pulse {
@@ -4441,6 +4469,49 @@ def apply_theme() -> None:
                 width: min(64vw, 280px);
                 height: min(80vw, 340px);
                 opacity: 0.12;
+            }
+        }
+
+        .floating-whatsapp {
+            position: fixed;
+            right: 1.2rem;
+            bottom: 1.2rem;
+            z-index: 120;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1rem;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--forest), var(--pista));
+            color: white !important;
+            text-decoration: none;
+            font-weight: 800;
+            box-shadow: 0 18px 36px rgba(74, 103, 65, 0.24);
+            transition: transform 0.6s ease, box-shadow 0.6s ease;
+        }
+
+        .floating-whatsapp:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 24px 40px rgba(74, 103, 65, 0.28);
+        }
+
+        .floating-whatsapp::before {
+            content: "✆";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.65rem;
+            height: 1.65rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+        }
+
+        @media (max-width: 760px) {
+            .floating-whatsapp {
+                right: 0.8rem;
+                bottom: 0.8rem;
+                padding: 0.75rem 0.9rem;
+                font-size: 0.92rem;
             }
         }
         </style>
@@ -4686,6 +4757,7 @@ def render_topbar() -> None:
                 <a class="topbar-chip" href="{esc(build_whatsapp_url('Hi Matrika Academy, I need help with classes or admissions.'))}" target="_blank" rel="noopener noreferrer">Support</a>
             </div>
         </div>
+        <a class="floating-whatsapp" href="{esc(build_whatsapp_url('Hi Matrika Academy, I want help choosing the right program.'))}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
         """,
         unsafe_allow_html=True,
     )
@@ -5135,6 +5207,27 @@ def dashboard_page() -> None:
         "The homepage introduces trust, the program flow explains the fit, and the protected academy app handles the next step with calmer continuity.",
     )
     render_card_grid(APP_JOURNEY_CARDS, columns=3, class_name="story-card")
+    render_story_spotlight(
+        "Instructor bio",
+        f"Meet {MD_NAME}, who stewards the academy's teaching vision.",
+        f"{MD_NAME} guides the care-first direction of Matrika Yoga Academy across prenatal support, children's movement, and teacher mentoring. A dedicated portrait and full credential panel can be layered into this section as soon as the academy photo assets are ready.",
+    )
+    render_story_rail(
+        [
+            {
+                "title": "Free trial first",
+                "body": "Start with a low-pressure trial or guided consultation before choosing a longer program.",
+            },
+            {
+                "title": "Pick the right batch",
+                "body": "Use the pathfinder and schedule filters to move toward the right time period and track.",
+            },
+            {
+                "title": "Continue with support",
+                "body": "Admissions, payments, and follow-up stay linked to one learner account after the first step.",
+            },
+        ]
+    )
 
     if not learner_authenticated():
         render_section(
@@ -5651,6 +5744,29 @@ def programs_page() -> None:
         "These routes now explain what the journey feels like, who it is for, and how the academy follows through after the first session.",
     )
     render_card_grid(PROGRAM_STORY_CARDS, columns=3, class_name="story-card")
+    render_section(
+        "Pricing hints",
+        "Learners should be able to sense the fee range before they commit.",
+        "These starting figures give families a clearer expectation without forcing them into the payment flow too early.",
+    )
+    render_card_grid(PAYMENT_PLANS, columns=3, class_name="pricing-card")
+    demo_cols = st.columns(3)
+    with demo_cols[0]:
+        st.button(
+            "Book a free trial",
+            key="programs_free_trial",
+            use_container_width=True,
+            on_click=jump_to,
+            args=("Admissions",),
+        )
+    with demo_cols[1]:
+        st.link_button("Join a live preview", LIVE_ZOOM_URL, use_container_width=True)
+    with demo_cols[2]:
+        st.link_button(
+            "WhatsApp for a demo",
+            build_whatsapp_url("Hi Matrika Academy, I want to book a free trial or preview class."),
+            use_container_width=True,
+        )
     st.divider()
     render_program_comparison()
     st.divider()

@@ -39,6 +39,46 @@ PROGRAMS = [
     ("Teacher Certification", "Mentored training with sequencing, practicum, and supportive feedback."),
 ]
 
+PRICING_HINTS = [
+    ("Garbhasanskara Flow", "INR 4,200", "Pregnancy-aware grounding with live classes, replays, and guided follow-through."),
+    ("Prenatal + Postnatal Care", "INR 3,200", "Comfort-led recovery and care rhythms for mothers who need flexibility."),
+    ("Kids Yoga Studio", "INR 2,800", "Playful, focus-building movement for children with parent-friendly support."),
+    ("Teacher Certification", "INR 24,000", "Mentored training, practice teaching, and a more supported certification route."),
+]
+
+WHY_US_POINTS = [
+    (
+        "Typical class links",
+        "Jumping between messages, links, and separate follow-up often makes new learners feel uncertain.",
+        "A calmer academy flow keeps discovery, admission, class links, payments, and support in one place.",
+    ),
+    (
+        "Busy family schedules",
+        "Rigid class-only systems make it hard for mothers, parents, and trainees to stay consistent.",
+        "Live sessions are paired with replay support, so progress can continue even on busy weeks.",
+    ),
+    (
+        "First-time confidence",
+        "Many yoga sites explain the offer but do not help people choose the right path with clarity.",
+        "The website and academy guide learners toward prenatal, postnatal, kids, or teacher training with softer decisions.",
+    ),
+]
+
+EXPERIENCE_SIGNALS = [
+    (
+        "Small-batch care",
+        "Learners usually choose Matrika for calmer batches, more guided support, and a less crowded digital experience.",
+    ),
+    (
+        "Live plus replay",
+        "Families can attend live and still continue with replay support when life, parenting, or work shifts the day.",
+    ),
+    (
+        "Human follow-through",
+        "The journey keeps real contact points through WhatsApp, email, and structured next steps instead of leaving people unsure.",
+    ),
+]
+
 FAQS = [
     (
         "What kinds of yoga classes does Matrika Academy offer?",
@@ -51,6 +91,34 @@ FAQS = [
     (
         "How do admissions and payments work?",
         "Learners can choose a path, create an account, request admission, and then complete payment through the academy payment flow.",
+    ),
+    (
+        "Is there a free trial or a live preview before joining?",
+        "Yes. Families can request a free live preview or demo conversation over WhatsApp before choosing the right yoga path.",
+    ),
+    (
+        "Do classes include replay access?",
+        "Yes. The academy is designed around live guidance with replay continuity so learners can keep going even when a class time is missed.",
+    ),
+    (
+        "Are classes suitable for pregnant mothers and postnatal recovery?",
+        "Yes. Matrika Yoga Academy includes pregnancy-aware and recovery-aware pathways so mothers can move with more comfort and steadier support.",
+    ),
+    (
+        "Can parents enquire for children without creating a full account first?",
+        "Yes. Families can understand the offering from the website first and then move into the academy flow when they are ready to enrol.",
+    ),
+    (
+        "Who leads the academy?",
+        "Matrika Yoga Academy is led by Abhinav, CEO, and Dr. Lavanya, Managing Director, with a care-first teaching and digital experience.",
+    ),
+    (
+        "How much do classes usually cost?",
+        "Program pricing varies by path, but the website now shares pricing hints so families can understand the approximate investment before they enquire.",
+    ),
+    (
+        "Can I join from Android, iPhone, or desktop?",
+        "Yes. The academy can be opened on desktop or mobile browsers, and learners can continue classes, payments, and follow-up from any device.",
     ),
 ]
 
@@ -182,24 +250,41 @@ def academy_shell_html() -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Opening Matrika Academy</title>
     <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#F7F0E8" />
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;700;800&display=swap');
       :root {{
-        --bg: #f5f8ef;
-        --bg-soft: #e4eed9;
-        --ink: #203629;
-        --muted: #5f7666;
-        --pista: #a7c97a;
-        --forest: #4c6d3f;
-        --line: rgba(76, 109, 63, 0.14);
+        --bg: #f7f0e8;
+        --bg-soft: #fbf5ef;
+        --bg-deep: #f0dfd2;
+        --ink: #3d2b1f;
+        --muted: #705c4d;
+        --pista: #8fa876;
+        --forest: #4a6741;
+        --terracotta: #c4785a;
+        --blush: #e8a882;
+        --line: rgba(74, 103, 65, 0.13);
+        --card: rgba(255, 250, 245, 0.84);
+        --shadow: 0 24px 64px rgba(86, 58, 42, 0.12);
       }}
       * {{ box-sizing: border-box; }}
+      @view-transition {{
+        navigation: auto;
+      }}
+      ::view-transition-group(*),
+      ::view-transition-old(*),
+      ::view-transition-new(*) {{
+        animation-duration: 0.6s;
+        animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+      }}
       body {{
         margin: 0;
-        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(167, 201, 122, 0.20), transparent 32%),
-          linear-gradient(160deg, var(--bg), #fbfff6 48%, var(--bg-soft));
+          radial-gradient(circle at 10% 10%, rgba(196, 120, 90, 0.16), transparent 24%),
+          radial-gradient(circle at 82% 10%, rgba(143, 168, 118, 0.22), transparent 20%),
+          linear-gradient(160deg, var(--bg), var(--bg-soft) 52%, var(--bg-deep));
       }}
       .loader {{
         position: fixed;
@@ -208,9 +293,9 @@ def academy_shell_html() -> str:
         align-items: center;
         justify-content: center;
         padding: 1rem;
-        background: rgba(245, 248, 239, 0.96);
+        background: rgba(247, 240, 232, 0.96);
         z-index: 20;
-        transition: opacity .35s ease, visibility .35s ease;
+        transition: opacity .6s ease, visibility .6s ease;
       }}
       .loader.hidden {{
         opacity: 0;
@@ -219,26 +304,68 @@ def academy_shell_html() -> str:
       }}
       .card {{
         width: min(92vw, 460px);
-        border-radius: 28px;
+        border-radius: 32px;
         border: 1px solid var(--line);
-        background: rgba(255,255,255,0.8);
-        padding: 1.4rem;
+        background:
+          radial-gradient(circle at top, rgba(232, 168, 130, 0.18), transparent 34%),
+          var(--card);
+        padding: 1.5rem;
         text-align: center;
-        box-shadow: 0 24px 60px rgba(60,92,47,0.14);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(20px);
       }}
       .card img {{
         width: 72px;
         height: 72px;
         border-radius: 22px;
       }}
+      .card h1 {{
+        margin: 0.9rem 0 0.5rem;
+        font-family: "Cormorant Garamond", serif;
+        font-size: clamp(2.1rem, 5vw, 3.1rem);
+        line-height: 0.96;
+        letter-spacing: -0.04em;
+        color: var(--forest);
+      }}
       .spinner {{
-        width: 60px;
-        height: 60px;
-        margin: 1rem auto 0;
+        width: 84px;
+        height: 84px;
+        margin: 1.1rem auto 0;
         border-radius: 999px;
-        border: 5px solid rgba(167, 201, 122, 0.22);
-        border-top-color: var(--forest);
-        animation: spin .9s linear infinite;
+        background:
+          radial-gradient(circle at center, rgba(247, 240, 232, 0.94) 0 28%, transparent 29%),
+          conic-gradient(
+            from 0deg,
+            rgba(196, 120, 90, 0.08),
+            rgba(196, 120, 90, 0.94),
+            rgba(232, 168, 130, 0.7),
+            rgba(143, 168, 118, 0.5),
+            rgba(74, 103, 65, 0.86),
+            rgba(196, 120, 90, 0.08)
+          );
+        box-shadow: inset 0 0 0 11px rgba(255, 250, 245, 0.9), 0 18px 42px rgba(86, 58, 42, 0.12);
+        animation: petal-spin 4.6s ease-in-out infinite;
+      }}
+      .status-pill {{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.45rem 0.85rem;
+        border-radius: 999px;
+        background: rgba(143, 168, 118, 0.14);
+        color: var(--forest);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }}
+      .status-pill::before {{
+        content: "";
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--terracotta);
+        animation: breath-pulse 2.8s ease-in-out infinite;
       }}
       .copy {{
         color: var(--muted);
@@ -257,27 +384,38 @@ def academy_shell_html() -> str:
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.8rem 1rem;
+        padding: 0.88rem 1.1rem;
         border-radius: 999px;
         text-decoration: none;
-        color: var(--ink);
-        border: 1px solid var(--line);
-        background: rgba(255,255,255,0.75);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: linear-gradient(135deg, var(--terracotta), var(--blush));
+        box-shadow: 0 16px 34px rgba(164, 96, 69, 0.2);
+        transition: transform 0.6s ease, box-shadow 0.6s ease;
       }}
-      @keyframes spin {{
-        from {{ transform: rotate(0deg); }}
-        to {{ transform: rotate(360deg); }}
+      .fallback:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 20px 42px rgba(164, 96, 69, 0.24);
+      }}
+      @keyframes petal-spin {{
+        0%, 100% {{ transform: rotate(0deg) scale(0.98); }}
+        50% {{ transform: rotate(180deg) scale(1.04); }}
+      }}
+      @keyframes breath-pulse {{
+        0%, 100% {{ transform: scale(0.9); opacity: 0.55; }}
+        50% {{ transform: scale(1.15); opacity: 1; }}
       }}
     </style>
   </head>
   <body>
     <div class="loader" id="loader">
       <div class="card">
+        <span class="status-pill">Guiding you in</span>
         <img src="{PUBLIC_SITE_URL}/assets/matrika_logo.svg" alt="Matrika Academy logo" />
         <h1>Opening Matrika Academy</h1>
         <p class="copy">
-          The academy space is loading. We are keeping the experience calm and branded here so you do not have
-          to wait on the default Streamlit skeleton screen.
+          The academy space is loading in a calmer, more intentional way, so families do not have to sit inside
+          the default Streamlit skeleton screen.
         </p>
         <div class="spinner" aria-hidden="true"></div>
         <a class="fallback" href="{academy_app_url()}" target="_self">Open the app directly</a>
@@ -297,21 +435,21 @@ def academy_shell_html() -> str:
       window.setTimeout(function () {{
         minimumDelayDone = true;
         maybeHideLoader();
-      }}, 2200);
+      }}, 1400);
       if (frame) {{
         frame.addEventListener('load', function () {{
           window.setTimeout(function () {{
             frameReady = true;
             maybeHideLoader();
-          }}, 1200);
+          }}, 450);
         }});
       }}
       window.setTimeout(function () {{
         if (loader) {{
           loader.querySelector('.copy').textContent =
-            'The academy is still warming up. This can happen on the free hosting plan after inactivity, but the app should appear shortly.';
+            'The academy is still warming up. This can happen after inactivity on the current hosting plan, but the app should appear shortly.';
         }}
-      }}, 8000);
+      }}, 6000);
     </script>
   </body>
 </html>
@@ -349,7 +487,7 @@ def landing_page_html() -> str:
     hero_stats_markup = "".join(
         f"""
         <article class="stat-card reveal" style="--delay:{index * 0.08:.2f}s;">
-          <strong data-count="{value}" data-suffix="{suffix}">0{esc(suffix)}</strong>
+          <strong>{esc(value)}{esc(suffix)}</strong>
           <span>{esc(label)}</span>
         </article>
         """
@@ -374,6 +512,46 @@ def landing_page_html() -> str:
         </article>
         """
         for index, (number, title, body) in enumerate(ritual_steps, start=1)
+    )
+    pricing_markup = "".join(
+        f"""
+        <article class="info-card pricing-card reveal" style="--delay:{index * 0.08:.2f}s;">
+          <span class="card-kicker">Pricing hint</span>
+          <h3>{esc(title)}</h3>
+          <strong class="price-tag">{esc(price)}</strong>
+          <p>{esc(note)}</p>
+        </article>
+        """
+        for index, (title, price, note) in enumerate(PRICING_HINTS, start=1)
+    )
+    why_us_markup = "".join(
+        f"""
+        <article class="comparison-card reveal" style="--delay:{index * 0.08:.2f}s;">
+          <span class="card-kicker">Why Matrika</span>
+          <h3>{esc(title)}</h3>
+          <div class="comparison-grid">
+            <div class="comparison-col">
+              <strong>Typical experience</strong>
+              <p>{esc(typical)}</p>
+            </div>
+            <div class="comparison-col accent">
+              <strong>Matrika approach</strong>
+              <p>{esc(matrika)}</p>
+            </div>
+          </div>
+        </article>
+        """
+        for index, (title, typical, matrika) in enumerate(WHY_US_POINTS, start=1)
+    )
+    experience_markup = "".join(
+        f"""
+        <article class="info-card experience-card reveal" style="--delay:{index * 0.08:.2f}s;">
+          <span class="card-kicker">What families value</span>
+          <h3>{esc(title)}</h3>
+          <p>{esc(body)}</p>
+        </article>
+        """
+        for index, (title, body) in enumerate(EXPERIENCE_SIGNALS, start=1)
     )
     faq_markup = "".join(
         f"""
@@ -420,6 +598,8 @@ def landing_page_html() -> str:
     />
     <link rel="canonical" href="{PUBLIC_SITE_URL}/" />
     <link rel="icon" href="{PUBLIC_SITE_URL}/assets/matrika_logo.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#F7F0E8" />
+    <link rel="manifest" href="{PUBLIC_SITE_URL}/manifest.webmanifest" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Matrika Yoga Academy" />
     <meta
@@ -438,33 +618,48 @@ def landing_page_html() -> str:
 {json_ld_payload()}
     </script>
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;700;800&display=swap');
       :root {{
-        --bg: #f6f9f1;
-        --bg-soft: #edf4e3;
-        --card: rgba(253, 255, 250, 0.82);
-        --card-strong: rgba(255, 255, 255, 0.9);
-        --ink: #142717;
-        --muted: #607261;
-        --pista: #adc87b;
-        --pista-bright: #c7e394;
-        --forest: #496441;
-        --moss: #24412d;
-        --line: rgba(73, 100, 65, 0.14);
-        --line-strong: rgba(73, 100, 65, 0.22);
-        --shadow: 0 28px 90px rgba(72, 99, 56, 0.12);
-        --shadow-soft: 0 12px 34px rgba(72, 99, 56, 0.08);
+        --bg: #f7f0e8;
+        --bg-soft: #fbf5ef;
+        --bg-deep: #f0dfd2;
+        --card: rgba(255, 250, 245, 0.8);
+        --card-strong: rgba(255, 252, 248, 0.92);
+        --ink: #3d2b1f;
+        --muted: #705c4d;
+        --pista: #8fa876;
+        --pista-bright: #aac18e;
+        --forest: #4a6741;
+        --moss: #425339;
+        --terracotta: #c4785a;
+        --terracotta-deep: #a96045;
+        --blush: #e8a882;
+        --violet: #c4a8c8;
+        --line: rgba(74, 103, 65, 0.13);
+        --line-strong: rgba(74, 103, 65, 0.24);
+        --shadow: 0 24px 72px rgba(86, 58, 42, 0.1);
+        --shadow-soft: 0 14px 34px rgba(86, 58, 42, 0.07);
         --max-width: min(1220px, calc(100vw - 2rem));
       }}
       * {{ box-sizing: border-box; }}
+      @view-transition {{
+        navigation: auto;
+      }}
+      ::view-transition-group(*),
+      ::view-transition-old(*),
+      ::view-transition-new(*) {{
+        animation-duration: 0.6s;
+        animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+      }}
       html {{ scroll-behavior: smooth; }}
       body {{
         margin: 0;
-        font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at 12% 10%, rgba(173, 200, 123, 0.28), transparent 28%),
-          radial-gradient(circle at 88% 6%, rgba(132, 181, 114, 0.16), transparent 24%),
-          linear-gradient(160deg, var(--bg), #fbfff8 48%, var(--bg-soft));
+          radial-gradient(circle at 12% 10%, rgba(196, 120, 90, 0.14), transparent 26%),
+          radial-gradient(circle at 88% 6%, rgba(143, 168, 118, 0.18), transparent 24%),
+          linear-gradient(160deg, var(--bg), var(--bg-soft) 50%, var(--bg-deep));
         min-height: 100vh;
         overflow-x: hidden;
       }}
@@ -484,7 +679,7 @@ def landing_page_html() -> str:
         height: 34vw;
         top: -8vw;
         left: -10vw;
-        background: rgba(192, 225, 141, 0.3);
+        background: rgba(232, 168, 130, 0.22);
         animation: matrika-orb-drift 18s ease-in-out infinite;
       }}
       body::after {{
@@ -492,7 +687,7 @@ def landing_page_html() -> str:
         height: 30vw;
         right: -8vw;
         bottom: -8vw;
-        background: rgba(125, 175, 118, 0.22);
+        background: rgba(143, 168, 118, 0.2);
         animation: matrika-orb-drift 22s ease-in-out infinite reverse;
       }}
       a {{ color: inherit; }}
@@ -520,7 +715,7 @@ def landing_page_html() -> str:
         height: 26rem;
         top: 12%;
         right: -6rem;
-        background: rgba(177, 214, 121, 0.18);
+        background: rgba(232, 168, 130, 0.14);
         animation: matrika-aura-float 19s ease-in-out infinite;
       }}
       .ambient-orb::after {{
@@ -528,7 +723,7 @@ def landing_page_html() -> str:
         height: 18rem;
         left: -4rem;
         bottom: 14%;
-        background: rgba(128, 163, 111, 0.14);
+        background: rgba(143, 168, 118, 0.16);
         animation: matrika-aura-float 16s ease-in-out infinite reverse;
       }}
       .ambient-grid {{
@@ -568,9 +763,9 @@ def landing_page_html() -> str:
         gap: 1rem;
         align-items: center;
         padding: 0.95rem 1.15rem;
-        border: 1px solid rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(255, 249, 243, 0.72);
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.7);
+        background: rgba(255, 250, 245, 0.78);
         backdrop-filter: blur(22px);
         box-shadow: var(--shadow-soft);
         position: sticky;
@@ -609,8 +804,10 @@ def landing_page_html() -> str:
       }}
       .brand strong {{
         display: block;
-        font-size: 1.35rem;
+        font-family: "Cormorant Garamond", serif;
+        font-size: 1.65rem;
         letter-spacing: -0.04em;
+        color: var(--forest);
       }}
       .brand span {{
         color: var(--muted);
@@ -628,12 +825,12 @@ def landing_page_html() -> str:
         gap: 0.45rem;
         padding: 0.9rem 1.2rem;
         border-radius: 999px;
-        background: linear-gradient(135deg, var(--pista), #7ea55f);
+        background: linear-gradient(135deg, var(--terracotta), var(--blush));
         color: #fff;
         text-decoration: none;
         font-weight: 700;
         border: 1px solid rgba(255, 255, 255, 0.12);
-        box-shadow: 0 16px 34px rgba(76, 109, 63, 0.18);
+        box-shadow: 0 16px 34px rgba(164, 96, 69, 0.16);
         position: relative;
         overflow: hidden;
         transition: transform 0.35s ease, box-shadow 0.35s ease, background 0.35s ease;
@@ -649,10 +846,10 @@ def landing_page_html() -> str:
       }}
       .button:hover {{
         transform: translateY(-3px);
-        box-shadow: 0 22px 42px rgba(76, 109, 63, 0.22);
+        box-shadow: 0 22px 42px rgba(164, 96, 69, 0.22);
       }}
       .button.secondary {{
-        background: rgba(255,255,255,0.78);
+        background: rgba(255, 252, 248, 0.82);
         color: var(--ink);
         border: 1px solid var(--line);
         box-shadow: none;
@@ -672,9 +869,9 @@ def landing_page_html() -> str:
         position: relative;
         overflow: hidden;
         background:
-          radial-gradient(circle at 18% 16%, rgba(206, 236, 149, 0.28), transparent 26%),
-          radial-gradient(circle at 82% 18%, rgba(164, 196, 123, 0.2), transparent 22%),
-          linear-gradient(145deg, rgba(251, 255, 246, 0.94), rgba(229, 239, 213, 0.82));
+          radial-gradient(circle at 18% 16%, rgba(232, 168, 130, 0.2), transparent 24%),
+          radial-gradient(circle at 82% 18%, rgba(143, 168, 118, 0.22), transparent 22%),
+          linear-gradient(145deg, rgba(255, 252, 248, 0.96), rgba(243, 233, 221, 0.84));
         border: 1px solid var(--line);
         box-shadow: var(--shadow);
       }}
@@ -720,7 +917,7 @@ def landing_page_html() -> str:
         gap: 0.35rem;
         border-radius: 999px;
         padding: 0.35rem 0.7rem;
-        background: rgba(167, 201, 122, 0.18);
+        background: rgba(143, 168, 118, 0.14);
         color: var(--forest);
         text-transform: uppercase;
         letter-spacing: 0.13em;
@@ -728,6 +925,7 @@ def landing_page_html() -> str:
         font-weight: 800;
       }}
       h1 {{
+        font-family: "Cormorant Garamond", serif;
         font-size: clamp(2.4rem, 6vw, 4.8rem);
         line-height: 0.94;
         margin: 0.7rem 0 1rem;
@@ -748,8 +946,8 @@ def landing_page_html() -> str:
         border-radius: 30px;
         border: 1px solid rgba(255, 255, 255, 0.58);
         background:
-          radial-gradient(circle at 48% 34%, rgba(210, 234, 171, 0.54), transparent 34%),
-          linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(233, 242, 220, 0.54));
+          radial-gradient(circle at 48% 34%, rgba(232, 168, 130, 0.28), transparent 32%),
+          linear-gradient(180deg, rgba(255, 252, 248, 0.72), rgba(243, 233, 221, 0.58));
         overflow: hidden;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
       }}
@@ -807,7 +1005,7 @@ def landing_page_html() -> str:
         height: 270px;
         transform: translateX(-50%);
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(182, 215, 132, 0.42), rgba(182, 215, 132, 0.14) 46%, transparent 72%);
+        background: radial-gradient(circle, rgba(232, 168, 130, 0.34), rgba(232, 168, 130, 0.1) 46%, transparent 72%);
         filter: blur(8px);
         animation: matrika-breathe 9s ease-in-out infinite;
       }}
@@ -927,7 +1125,7 @@ def landing_page_html() -> str:
         white-space: nowrap;
         padding: 0.42rem 0.8rem;
         border-radius: 999px;
-        background: rgba(173, 200, 123, 0.14);
+        background: rgba(143, 168, 118, 0.14);
         color: var(--forest);
         font-size: 0.86rem;
         font-weight: 700;
@@ -962,6 +1160,7 @@ def landing_page_html() -> str:
       }}
       .program-card,
       .info-card,
+      .comparison-card,
       .faq-item,
       .journey-card,
       .contact-card,
@@ -975,19 +1174,22 @@ def landing_page_html() -> str:
       }}
       .program-card:hover,
       .info-card:hover,
+      .comparison-card:hover,
       .journey-card:hover,
       .contact-card:hover,
       .seo-link-card:hover {{
         transform: translateY(-8px);
         border-color: var(--line-strong);
         background: rgba(255,255,255,0.86);
-        box-shadow: 0 22px 48px rgba(72, 99, 56, 0.12);
+        box-shadow: 0 22px 48px rgba(86, 58, 42, 0.12);
       }}
       .program-card h3,
       .info-card h3,
+      .comparison-card h3,
       .journey-card h3,
       .contact-card h3 {{
         margin: 0 0 0.45rem;
+        font-family: "Cormorant Garamond", serif;
         letter-spacing: -0.05em;
         font-size: 1.18rem;
       }}
@@ -999,7 +1201,7 @@ def landing_page_html() -> str:
         min-width: 3rem;
         padding: 0.4rem 0.72rem;
         border-radius: 999px;
-        background: rgba(173, 200, 123, 0.16);
+        background: rgba(143, 168, 118, 0.14);
         color: var(--forest);
         font-size: 0.78rem;
         font-weight: 800;
@@ -1012,6 +1214,36 @@ def landing_page_html() -> str:
       }}
       .journey-card {{
         min-height: 220px;
+      }}
+      .price-tag {{
+        display: inline-flex;
+        margin: 0.25rem 0 0.55rem;
+        padding: 0.45rem 0.8rem;
+        border-radius: 999px;
+        background: rgba(196, 120, 90, 0.12);
+        color: var(--terracotta-deep);
+        font-size: 0.94rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+      }}
+      .comparison-grid {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
+        margin-top: 0.85rem;
+      }}
+      .comparison-col {{
+        padding: 0.95rem;
+        border-radius: 18px;
+        background: rgba(255, 252, 248, 0.7);
+        border: 1px solid var(--line);
+      }}
+      .comparison-col.accent {{
+        background: linear-gradient(180deg, rgba(143, 168, 118, 0.12), rgba(255, 252, 248, 0.9));
+      }}
+      .comparison-col strong {{
+        display: block;
+        margin-bottom: 0.35rem;
       }}
       .journey-card p {{
         margin-bottom: 0;
@@ -1102,8 +1334,8 @@ def landing_page_html() -> str:
         padding: 1.25rem;
         border-radius: 28px;
         background:
-          linear-gradient(135deg, rgba(173, 200, 123, 0.2), rgba(237, 244, 227, 0.9));
-        border: 1px solid rgba(173, 200, 123, 0.28);
+          linear-gradient(135deg, rgba(196, 120, 90, 0.16), rgba(255, 252, 248, 0.92));
+        border: 1px solid rgba(196, 120, 90, 0.2);
         box-shadow: var(--shadow-soft);
       }}
       .cta-band h3 {{
@@ -1116,6 +1348,33 @@ def landing_page_html() -> str:
         text-align: center;
         color: var(--muted);
         font-size: 0.95rem;
+      }}
+      .floating-whatsapp {{
+        position: fixed;
+        right: 1.2rem;
+        bottom: 1.2rem;
+        z-index: 30;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.9rem 1.05rem;
+        border-radius: 999px;
+        text-decoration: none;
+        color: #fff;
+        background: linear-gradient(135deg, var(--forest), var(--pista));
+        box-shadow: 0 18px 36px rgba(74, 103, 65, 0.24);
+        font-size: 0.92rem;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        transition: transform 0.6s ease, box-shadow 0.6s ease;
+      }}
+      .floating-whatsapp:hover {{
+        transform: translateY(-4px);
+        box-shadow: 0 22px 40px rgba(74, 103, 65, 0.28);
+      }}
+      .floating-whatsapp::before {{
+        content: "●";
+        font-size: 0.74rem;
       }}
       .reveal {{
         opacity: 0;
@@ -1170,7 +1429,8 @@ def landing_page_html() -> str:
         .grid.three,
         .hero-grid,
         .contact-grid,
-        .hero-stat-grid {{
+        .hero-stat-grid,
+        .comparison-grid {{
           grid-template-columns: 1fr;
           display: grid;
         }}
@@ -1226,6 +1486,11 @@ def landing_page_html() -> str:
           font-size: 0.76rem;
           padding: 0.6rem 0.75rem;
         }}
+        .floating-whatsapp {{
+          right: 0.8rem;
+          bottom: 0.85rem;
+          padding: 0.82rem 0.96rem;
+        }}
       }}
       @media (prefers-reduced-motion: reduce) {{
         *,
@@ -1259,29 +1524,30 @@ def landing_page_html() -> str:
         </a>
         <nav class="menu" aria-label="Section links">
           <a href="#programs">Programs</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#why-us">Why us</a>
           <a href="#journey">Journey</a>
           <a href="#faq">FAQ</a>
           <a href="#contact">Contact</a>
         </nav>
         <nav class="actions" aria-label="Primary">
           <a class="button" href="{academy_shell_url()}">Open Academy App</a>
-          <a class="button secondary" href="{LIVE_ZOOM_URL}">Join Live Class</a>
+          <a class="button secondary" href="{WHATSAPP_URL}">Book free preview</a>
         </nav>
       </header>
 
       <section class="hero reveal reveal-visible">
         <div class="hero-grid">
           <div class="hero-copy">
-            <span class="eyebrow">Yoga academy in one calm place</span>
-            <h1>Matrika Yoga Academy supports breath, growth, and steady practice.</h1>
+            <span class="eyebrow">Sacred earth &amp; bloom</span>
+            <h1>A nurturing online yoga academy for mothers, children, and future teachers.</h1>
             <p>
               Explore online prenatal yoga, postnatal recovery guidance, kids yoga classes, and yoga teacher
-              training from a calmer, more guided digital experience. Families and learners can start on the
-              website and continue into the full academy app when they are ready.
+              training through a calmer, more guided experience that feels warm, trustworthy, and spiritually grounded.
             </p>
             <div class="actions">
-              <a class="button" href="{academy_shell_url()}">Start with the academy app</a>
-              <a class="button secondary" href="mailto:{CONTACT_EMAIL}">Email the academy</a>
+              <a class="button" href="{academy_shell_url()}">Open the academy</a>
+              <a class="button secondary" href="{WHATSAPP_URL}">Request a free demo</a>
               <a class="button secondary" href="tel:{CONTACT_PHONE}">Call {CONTACT_PHONE}</a>
             </div>
             <div class="hero-stat-grid">{hero_stats_markup}</div>
@@ -1314,6 +1580,27 @@ def landing_page_html() -> str:
           </p>
         </div>
         <div class="grid two">{program_cards}</div>
+      </section>
+
+      <section class="section reveal" id="pricing">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Pricing hints</span>
+            <h2>Clearer pricing before a learner commits.</h2>
+          </div>
+          <p>
+            Families often want a trustworthy price range before they enquire. These pricing hints make the first decision calmer and more transparent.
+          </p>
+        </div>
+        <div class="grid two">{pricing_markup}</div>
+        <div class="cta-band">
+          <h3>Need help choosing the right path before paying?</h3>
+          <p>Book a free preview or demo conversation and we will help you choose the most suitable class rhythm first.</p>
+          <div class="actions">
+            <a class="button" href="{WHATSAPP_URL}">Book a free preview</a>
+            <a class="button secondary" href="{LIVE_ZOOM_URL}">Join a live session</a>
+          </div>
+        </div>
       </section>
 
       <section class="section reveal">
@@ -1360,6 +1647,32 @@ def landing_page_html() -> str:
         </div>
       </section>
 
+      <section class="section reveal" id="why-us">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Why us</span>
+            <h2>Why the Matrika experience feels steadier than a typical class link.</h2>
+          </div>
+          <p>
+            The academy is designed to reduce uncertainty for mothers, parents, and trainees by making the digital flow feel more human and more guided.
+          </p>
+        </div>
+        <div class="grid three">{why_us_markup}</div>
+      </section>
+
+      <section class="section reveal" id="experience">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Learner experience</span>
+            <h2>What families usually value after they begin.</h2>
+          </div>
+          <p>
+            These are the qualities people tend to care about most once they join: slower guidance, replay continuity, and a clearer sense of support.
+          </p>
+        </div>
+        <div class="grid three">{experience_markup}</div>
+      </section>
+
       <section class="section reveal" id="journey">
         <div class="section-head">
           <div>
@@ -1372,6 +1685,34 @@ def landing_page_html() -> str:
           </p>
         </div>
         <div class="grid three">{ritual_cards}</div>
+      </section>
+
+      <section class="section reveal" id="leadership">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Instructor guidance</span>
+            <h2>Led with teaching care, held together with digital clarity.</h2>
+          </div>
+          <p>
+            Matrika is guided by a leadership team that keeps the academy feeling nurturing, practical, and trustworthy from the very first visit.
+          </p>
+        </div>
+        <div class="grid two">
+          <article class="info-card reveal" style="--delay:0.08s;">
+            <span class="card-kicker">Managing Director</span>
+            <h3>{esc(MD_NAME)}</h3>
+            <p>
+              Dr. Lavanya shapes the care-first teaching direction behind the academy, helping prenatal, postnatal, kids, and teacher-training journeys feel more grounded and intentional.
+            </p>
+          </article>
+          <article class="info-card reveal" style="--delay:0.16s;">
+            <span class="card-kicker">Chief Executive Officer</span>
+            <h3>{esc(CEO_NAME)}</h3>
+            <p>
+              Abhinav guides the digital experience so admissions, class access, payments, and follow-through feel clearer, calmer, and easier for families to trust.
+            </p>
+          </article>
+        </div>
       </section>
 
       <section class="section reveal" id="insights">
@@ -1443,6 +1784,7 @@ def landing_page_html() -> str:
         Public website: {esc(site_host())} · Academy app: {esc(academy_shell_url())}
       </p>
     </main>
+    <a class="floating-whatsapp" href="{WHATSAPP_URL}" target="_blank" rel="noopener noreferrer">WhatsApp the academy</a>
     <script>
       (() => {{
         const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1498,36 +1840,11 @@ def landing_page_html() -> str:
           }});
         }}
 
-        const counters = document.querySelectorAll("[data-count]");
-        const counterObserver = !prefersReducedMotion && "IntersectionObserver" in window
-          ? new IntersectionObserver((entries) => {{
-              entries.forEach((entry) => {{
-                if (!entry.isIntersecting || entry.target.dataset.started === "1") return;
-                entry.target.dataset.started = "1";
-                const target = Number(entry.target.dataset.count || "0");
-                const suffix = entry.target.dataset.suffix || "";
-                const duration = 1400;
-                const startTime = performance.now();
-                const tick = (now) => {{
-                  const progress = Math.min(1, (now - startTime) / duration);
-                  const eased = 1 - Math.pow(1 - progress, 3);
-                  entry.target.textContent = `${{Math.round(target * eased)}}${{suffix}}`;
-                  if (progress < 1) {{
-                    requestAnimationFrame(tick);
-                  }}
-                }};
-                requestAnimationFrame(tick);
-                counterObserver.unobserve(entry.target);
-              }});
-            }}, {{ threshold: 0.45 }})
-          : null;
-        counters.forEach((counter) => {{
-          if (counterObserver) {{
-            counterObserver.observe(counter);
-          }} else {{
-            counter.textContent = `${{counter.dataset.count || "0"}}${{counter.dataset.suffix || ""}}`;
-          }}
-        }});
+        if ("serviceWorker" in navigator) {{
+          window.addEventListener("load", () => {{
+            navigator.serviceWorker.register("{PUBLIC_SITE_URL}/sw.js").catch(() => {{}});
+          }});
+        }}
       }})();
     </script>
   </body>
@@ -1547,25 +1864,30 @@ def seo_content_page_html(slug: str) -> str:
     <meta name="description" content="{esc(page["description"])}" />
     <link rel="canonical" href="{seo_page_url(slug)}" />
     <link rel="icon" href="{PUBLIC_SITE_URL}/assets/matrika_logo.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#F7F0E8" />
+    <link rel="manifest" href="{PUBLIC_SITE_URL}/manifest.webmanifest" />
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;700;800&display=swap');
       :root {{
-        --bg: #f6f9f1;
-        --card: rgba(255,255,255,0.84);
-        --ink: #18281a;
-        --muted: #607261;
-        --pista: #adc87b;
-        --forest: #496441;
-        --line: rgba(73, 100, 65, 0.14);
-        --shadow: 0 20px 56px rgba(72, 99, 56, 0.1);
+        --bg: #f7f0e8;
+        --card: rgba(255, 250, 245, 0.84);
+        --ink: #3d2b1f;
+        --muted: #705c4d;
+        --pista: #8fa876;
+        --forest: #4a6741;
+        --terracotta: #c4785a;
+        --blush: #e8a882;
+        --line: rgba(74, 103, 65, 0.13);
+        --shadow: 0 20px 56px rgba(86, 58, 42, 0.1);
       }}
       * {{ box-sizing: border-box; }}
       body {{
         margin: 0;
-        font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(173, 200, 123, 0.22), transparent 28%),
-          linear-gradient(160deg, var(--bg), #fbfff8 48%, #edf4e3);
+          radial-gradient(circle at top left, rgba(196, 120, 90, 0.14), transparent 28%),
+          linear-gradient(160deg, var(--bg), #fbf5ef 48%, #f0dfd2);
       }}
       .shell {{
         width: min(1080px, calc(100vw - 2rem));
@@ -1602,8 +1924,10 @@ def seo_content_page_html(slug: str) -> str:
       }}
       .brand strong {{
         display: block;
-        font-size: 1.2rem;
+        font-family: "Cormorant Garamond", serif;
+        font-size: 1.45rem;
         letter-spacing: -0.04em;
+        color: var(--forest);
       }}
       .brand span {{
         color: var(--muted);
@@ -1622,7 +1946,7 @@ def seo_content_page_html(slug: str) -> str:
         border-radius: 999px;
         text-decoration: none;
         font-weight: 700;
-        background: linear-gradient(135deg, var(--pista), #7ea55f);
+        background: linear-gradient(135deg, var(--terracotta), var(--blush));
         color: white;
       }}
       .button.secondary {{
@@ -1650,7 +1974,7 @@ def seo_content_page_html(slug: str) -> str:
         display: inline-flex;
         padding: 0.38rem 0.72rem;
         border-radius: 999px;
-        background: rgba(173, 200, 123, 0.18);
+        background: rgba(143, 168, 118, 0.14);
         color: var(--forest);
         font-size: 0.74rem;
         font-weight: 800;
@@ -1658,6 +1982,7 @@ def seo_content_page_html(slug: str) -> str:
         text-transform: uppercase;
       }}
       h1, h2, h3 {{
+        font-family: "Cormorant Garamond", serif;
         letter-spacing: -0.05em;
       }}
       h1 {{
@@ -1687,6 +2012,27 @@ def seo_content_page_html(slug: str) -> str:
         border-radius: 24px;
         border: 1px solid var(--line);
         background: rgba(255,255,255,0.74);
+      }}
+      .floating-whatsapp {{
+        position: fixed;
+        right: 1rem;
+        bottom: 1rem;
+        z-index: 20;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.88rem 1rem;
+        border-radius: 999px;
+        text-decoration: none;
+        color: #fff;
+        background: linear-gradient(135deg, var(--forest), var(--pista));
+        box-shadow: 0 18px 36px rgba(74, 103, 65, 0.24);
+        font-size: 0.92rem;
+        font-weight: 800;
+      }}
+      .floating-whatsapp::before {{
+        content: "●";
+        font-size: 0.74rem;
       }}
       .point-card ul {{
         margin: 0;
@@ -1746,8 +2092,20 @@ def seo_content_page_html(slug: str) -> str:
           The academy experience is shaped by <strong>{esc(CEO_NAME)}</strong>, CEO, and <strong>{esc(MD_NAME)}</strong>, Managing Director,
           so the digital flow and teaching care move together.
         </p>
+        <div class="actions" style="margin-top:1rem;">
+          <a class="button" href="{WHATSAPP_URL}">Book a free preview</a>
+          <a class="button secondary" href="mailto:{CONTACT_EMAIL}">Email the academy</a>
+        </div>
       </section>
     </main>
+    <a class="floating-whatsapp" href="{WHATSAPP_URL}" target="_blank" rel="noopener noreferrer">WhatsApp the academy</a>
+    <script>
+      if ("serviceWorker" in navigator) {{
+        window.addEventListener("load", () => {{
+          navigator.serviceWorker.register("{PUBLIC_SITE_URL}/sw.js").catch(() => {{}});
+        }});
+      }}
+    </script>
   </body>
 </html>
 """
@@ -1881,6 +2239,76 @@ async def sitemap_xml() -> Response:
 </urlset>
 """
     return Response(content=body, media_type="application/xml")
+
+
+@app.get("/manifest.webmanifest")
+async def manifest() -> Response:
+    body = {
+        "name": "Matrika Yoga Academy",
+        "short_name": "Matrika",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#F7F0E8",
+        "theme_color": "#C4785A",
+        "description": "Online prenatal yoga, postnatal recovery, kids yoga, and teacher training.",
+        "icons": [
+            {
+                "src": f"{PUBLIC_SITE_URL}/assets/matrika_logo.svg",
+                "sizes": "any",
+                "type": "image/svg+xml",
+                "purpose": "any",
+            }
+        ],
+    }
+    return Response(content=json.dumps(body), media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+async def service_worker() -> Response:
+    pre_cache = [
+        "/",
+        "/academy",
+        "/robots.txt",
+        "/sitemap.xml",
+        "/assets/matrika_logo.svg",
+        "/assets/buddha_meditation.svg",
+    ] + [f"/{slug}" for slug in SEO_CONTENT_PAGES]
+    script = f"""
+const CACHE_NAME = "matrika-static-v3";
+const PRECACHE_URLS = {json.dumps(pre_cache)};
+
+self.addEventListener("install", (event) => {{
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
+  self.skipWaiting();
+}});
+
+self.addEventListener("activate", (event) => {{
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+    )
+  );
+  self.clients.claim();
+}});
+
+self.addEventListener("fetch", (event) => {{
+  const request = event.request;
+  if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  event.respondWith(
+    fetch(request)
+      .then((response) => {{
+        const cloned = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+        return response;
+      }})
+      .catch(() => caches.match(request).then((cached) => cached || caches.match("/")))
+  );
+}});
+"""
+    return Response(content=script, media_type="application/javascript")
 
 
 @app.get("/assets/matrika_logo.svg")
