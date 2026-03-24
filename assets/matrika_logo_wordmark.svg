@@ -1,0 +1,30 @@
+<svg width="920" height="260" viewBox="0 0 920 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wordBg" x1="28" y1="24" x2="892" y2="236" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF5F1"/>
+      <stop offset="1" stop-color="#F7F0E8"/>
+    </linearGradient>
+    <linearGradient id="pill" x1="526" y1="148" x2="880" y2="208" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E8A882"/>
+      <stop offset="1" stop-color="#C4785A"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="904" height="244" rx="42" fill="url(#wordBg)"/>
+  <g transform="translate(48 24)">
+    <circle cx="82" cy="54" r="10" fill="#C8898B"/>
+    <path d="M82 72C104 72 118 88 118 110C118 122 112 132 104 138H60C52 132 46 122 46 110C46 88 60 72 82 72Z" fill="#C8898B"/>
+    <ellipse cx="56" cy="134" rx="28" ry="20" fill="#C8898B"/>
+    <ellipse cx="108" cy="134" rx="28" ry="20" fill="#C8898B"/>
+    <ellipse cx="82" cy="149" rx="50" ry="18" fill="#C8898B"/>
+    <text x="82" y="116" text-anchor="middle" fill="#E7C86F" font-family="'Cormorant Garamond', serif" font-size="28" font-weight="700">ॐ</text>
+    <path d="M22 32C42 12 60 2 82 2C104 2 122 12 142 32" stroke="#C4785A" stroke-width="9" stroke-linecap="round"/>
+  </g>
+  <text x="230" y="106" fill="#C4785A" font-family="'Cormorant Garamond', serif" font-size="72" font-weight="700" letter-spacing="2">MATRIKA ACADEMY</text>
+  <text x="232" y="150" fill="#4A6741" font-family="'DM Sans', sans-serif" font-size="28" font-weight="500">Prenatal • Postnatal • Kids Yoga • Teacher Training</text>
+  <g>
+    <rect x="530" y="172" width="320" height="50" rx="22" fill="#FFF5F1" stroke="#1C1612" stroke-width="3"/>
+    <text x="554" y="206" fill="#C8898B" font-family="'DM Sans', sans-serif" font-size="26" font-weight="500">MAA</text>
+    <text x="630" y="196" fill="#C8898B" font-family="'DM Sans', sans-serif" font-size="17" font-weight="500">KA PYAAR</text>
+    <text x="630" y="214" fill="#C8898B" font-family="'DM Sans', sans-serif" font-size="17" font-weight="500">KE LIYE</text>
+  </g>
+</svg>

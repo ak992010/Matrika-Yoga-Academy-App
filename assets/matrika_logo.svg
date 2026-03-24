@@ -1,17 +1,74 @@
-<svg width="320" height="320" viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="matrikaBg" x1="42" y1="34" x2="276" y2="284" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#A8C97A"/>
-      <stop offset="1" stop-color="#4C6D3F"/>
+    <linearGradient id="bg" x1="42" y1="24" x2="458" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F0E8"/>
+      <stop offset="1" stop-color="#F0DFD2"/>
     </linearGradient>
-    <linearGradient id="matrikaAccent" x1="68" y1="88" x2="252" y2="246" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FBFFF5" stop-opacity="0.96"/>
-      <stop offset="1" stop-color="#E7F1D9" stop-opacity="0.82"/>
+    <linearGradient id="brush" x1="48" y1="168" x2="470" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E8A882" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#C4785A" stop-opacity="0.78"/>
     </linearGradient>
+    <linearGradient id="lotus" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F6D1D9"/>
+      <stop offset="1" stop-color="#C4A8C8"/>
+    </linearGradient>
+    <filter id="softShadow" x="0" y="0" width="512" height="512" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#7B5B4A" flood-opacity="0.12"/>
+    </filter>
+    <path id="archText" d="M120 168C162 120 219 96 256 96C293 96 350 120 392 168"/>
   </defs>
-  <rect x="24" y="24" width="272" height="272" rx="80" fill="url(#matrikaBg)"/>
-  <rect x="44" y="44" width="232" height="232" rx="62" fill="url(#matrikaAccent)" fill-opacity="0.22" stroke="#FFFFFF" stroke-opacity="0.36"/>
-  <path d="M86 222V98H114L160 165L206 98H234V222H206V147L170 199H150L114 147V222H86Z" fill="white"/>
-  <path d="M111 88C121 71 138 60 160 60C182 60 199 71 209 88" stroke="white" stroke-width="12" stroke-linecap="round"/>
-  <path d="M132 74C139 63 148 56 160 56C172 56 181 63 188 74" stroke="white" stroke-width="8" stroke-linecap="round" opacity="0.82"/>
+
+  <rect width="512" height="512" rx="40" fill="url(#bg)"/>
+
+  <g opacity="0.9">
+    <path d="M32 166C108 152 149 162 220 154C315 143 375 130 480 156V336C394 318 332 316 236 328C157 338 112 336 32 352V166Z" fill="url(#brush)"/>
+    <path d="M24 182C87 166 142 168 214 158C300 146 381 142 488 166" stroke="#C4785A" stroke-width="1.2" stroke-linecap="round" opacity="0.3"/>
+    <path d="M32 214C92 198 144 200 222 194C304 188 382 186 480 206" stroke="#C4785A" stroke-width="1.2" stroke-linecap="round" opacity="0.2"/>
+    <path d="M32 248C110 230 158 234 244 230C332 226 383 230 480 244" stroke="#C4785A" stroke-width="1.2" stroke-linecap="round" opacity="0.18"/>
+    <path d="M32 286C116 272 171 274 258 274C344 274 398 276 480 288" stroke="#F7F0E8" stroke-width="1.5" stroke-linecap="round" opacity="0.18"/>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <g transform="translate(56 50)">
+      <ellipse cx="34" cy="36" rx="10" ry="22" transform="rotate(-54 34 36)" fill="url(#lotus)" stroke="#8F776F" stroke-width="1.2"/>
+      <ellipse cx="52" cy="34" rx="12" ry="25" transform="rotate(-26 52 34)" fill="url(#lotus)" stroke="#8F776F" stroke-width="1.2"/>
+      <ellipse cx="72" cy="38" rx="11" ry="22" fill="url(#lotus)" stroke="#8F776F" stroke-width="1.2"/>
+      <ellipse cx="90" cy="34" rx="12" ry="25" transform="rotate(24 90 34)" fill="url(#lotus)" stroke="#8F776F" stroke-width="1.2"/>
+      <ellipse cx="108" cy="36" rx="10" ry="22" transform="rotate(52 108 36)" fill="url(#lotus)" stroke="#8F776F" stroke-width="1.2"/>
+    </g>
+    <g transform="translate(360 390)">
+      <ellipse cx="22" cy="18" rx="10" ry="22" transform="rotate(-54 22 18)" fill="url(#lotus)" stroke="#8F776F" stroke-width="1.2"/>
+      <ellipse cx="40" cy="16" rx="12" ry="25" transform="rotate(-26 40 16)" fill="url(#lotus)" stroke="#8F776F" stroke-width="1.2"/>
+      <ellipse cx="60" cy="20" rx="11" ry="22" fill="url(#lotus)" stroke="#8F776F" stroke-width="1.2"/>
+      <ellipse cx="78" cy="16" rx="12" ry="25" transform="rotate(24 78 16)" fill="url(#lotus)" stroke="#8F776F" stroke-width="1.2"/>
+      <ellipse cx="96" cy="18" rx="10" ry="22" transform="rotate(52 96 18)" fill="url(#lotus)" stroke="#8F776F" stroke-width="1.2"/>
+    </g>
+  </g>
+
+  <text fill="#C8898B" font-family="'Cormorant Garamond', serif" font-size="28" font-weight="700" letter-spacing="2.8">
+    <textPath href="#archText" startOffset="50%" text-anchor="middle">MATRIKA ACADEMY</textPath>
+  </text>
+
+  <g filter="url(#softShadow)">
+    <circle cx="256" cy="178" r="13" fill="#C8898B"/>
+    <path d="M256 198C286 198 304 220 304 250C304 266 297 280 286 288H226C215 280 208 266 208 250C208 220 226 198 256 198Z" fill="#C8898B"/>
+    <ellipse cx="222" cy="280" rx="36" ry="27" fill="#C8898B"/>
+    <ellipse cx="290" cy="280" rx="36" ry="27" fill="#C8898B"/>
+    <ellipse cx="256" cy="298" rx="62" ry="24" fill="#C8898B"/>
+    <text x="256" y="258" text-anchor="middle" fill="#E7C86F" font-family="'Cormorant Garamond', serif" font-size="36" font-weight="700">ॐ</text>
+  </g>
+
+  <g filter="url(#softShadow)" fill="#F6D7D8" stroke="#8F776F" stroke-width="2.6" font-family="'Cormorant Garamond', serif" font-size="76" font-weight="700">
+    <text x="158" y="330" transform="rotate(-24 158 330)">Y</text>
+    <text x="212" y="392">O</text>
+    <text x="272" y="394">G</text>
+    <text x="338" y="330" transform="rotate(22 338 330)">A</text>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <rect x="118" y="392" width="276" height="76" rx="28" fill="#FFF5F1" stroke="#1C1612" stroke-width="4"/>
+    <text x="150" y="438" fill="#C8898B" font-family="'DM Sans', sans-serif" font-size="34" font-weight="500" letter-spacing="1">MAA</text>
+    <text x="250" y="425" fill="#C8898B" font-family="'DM Sans', sans-serif" font-size="22" font-weight="500">KA PYAAR</text>
+    <text x="250" y="450" fill="#C8898B" font-family="'DM Sans', sans-serif" font-size="22" font-weight="500">KE LIYE</text>
+  </g>
 </svg>

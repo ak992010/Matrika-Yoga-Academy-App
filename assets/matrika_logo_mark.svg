@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="markBg" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF5F1"/>
+      <stop offset="1" stop-color="#F0DFD2"/>
+    </linearGradient>
+    <linearGradient id="markAura" x1="145" y1="120" x2="362" y2="354" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E8A882"/>
+      <stop offset="1" stop-color="#8FA876"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="88" fill="url(#markBg)"/>
+  <circle cx="256" cy="218" r="118" fill="url(#markAura)" opacity="0.18"/>
+  <circle cx="256" cy="178" r="17" fill="#C8898B"/>
+  <path d="M256 203C289 203 311 226 311 260C311 278 303 292 292 300H220C209 292 201 278 201 260C201 226 223 203 256 203Z" fill="#C8898B"/>
+  <ellipse cx="220" cy="293" rx="40" ry="28" fill="#C8898B"/>
+  <ellipse cx="292" cy="293" rx="40" ry="28" fill="#C8898B"/>
+  <ellipse cx="256" cy="314" rx="70" ry="26" fill="#C8898B"/>
+  <text x="256" y="264" text-anchor="middle" fill="#E7C86F" font-family="'Cormorant Garamond', serif" font-size="42" font-weight="700">ॐ</text>
+  <path d="M144 150C177 113 213 92 256 92C299 92 335 113 368 150" stroke="#C4785A" stroke-width="14" stroke-linecap="round"/>
+  <text x="256" y="392" text-anchor="middle" fill="#4A6741" font-family="'Cormorant Garamond', serif" font-size="52" font-weight="700" letter-spacing="1.8">MAA</text>
+  <text x="256" y="430" text-anchor="middle" fill="#705C4D" font-family="'DM Sans', sans-serif" font-size="22" font-weight="500">Matrika Yoga Academy</text>
+</svg>

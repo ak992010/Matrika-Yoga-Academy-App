@@ -12,12 +12,19 @@ from urllib.parse import quote
 
 import httpx
 import websockets
-from fastapi import FastAPI, Request, Response, WebSocket
+from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
 
 APP_DIR = Path(__file__).parent
 LOGO_PATH = APP_DIR / "assets" / "matrika_logo.svg"
 BUDDHA_PATH = APP_DIR / "assets" / "buddha_meditation.svg"
+ASSET_FILES = {
+    "matrika_logo.svg": APP_DIR / "assets" / "matrika_logo.svg",
+    "matrika_logo_mark.svg": APP_DIR / "assets" / "matrika_logo_mark.svg",
+    "matrika_logo_wordmark.svg": APP_DIR / "assets" / "matrika_logo_wordmark.svg",
+    "matrika_logo_badge.svg": APP_DIR / "assets" / "matrika_logo_badge.svg",
+    "buddha_meditation.svg": APP_DIR / "assets" / "buddha_meditation.svg",
+}
 
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://matrikayogaacademy.com").rstrip("/")
 APP_BASE_PATH = os.getenv("APP_BASE_PATH", "/app").rstrip("/") or "/app"
@@ -2311,14 +2318,13 @@ self.addEventListener("fetch", (event) => {{
     return Response(content=script, media_type="application/javascript")
 
 
-@app.get("/assets/matrika_logo.svg")
-async def logo_asset() -> FileResponse:
-    return FileResponse(LOGO_PATH, media_type="image/svg+xml")
-
-
-@app.get("/assets/buddha_meditation.svg")
-async def buddha_asset() -> FileResponse:
-    return FileResponse(BUDDHA_PATH, media_type="image/svg+xml")
+@app.get("/assets/{asset_name}")
+async def asset_file(asset_name: str) -> FileResponse:
+    asset = ASSET_FILES.get(asset_name)
+    if not asset or not asset.exists():
+        raise HTTPException(status_code=404, detail="Asset not found")
+    media_type = "image/svg+xml" if asset.suffix.lower() == ".svg" else None
+    return FileResponse(asset, media_type=media_type)
 
 
 def upstream_url(path: str, query: str) -> str:

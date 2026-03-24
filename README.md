@@ -9,7 +9,11 @@ What it includes
 - Google Sheets persistence for cloud deployments, with local CSV fallback for development
 - Admin page for reviewing saved entries after password unlock
 - Live Studio page for links, replays, and attendance tracking
-- Optional logo support via `assets/matrika_logo.svg`
+- Logo system files:
+  - `assets/matrika_logo.svg` main square logo
+  - `assets/matrika_logo_mark.svg` icon / app mark
+  - `assets/matrika_logo_wordmark.svg` horizontal wordmark
+  - `assets/matrika_logo_badge.svg` badge / seal version
 - SEO landing page, `robots.txt`, and `sitemap.xml` support through `seo_server.py`
 
 Run it
