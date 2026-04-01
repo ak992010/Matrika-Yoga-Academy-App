@@ -13,6 +13,7 @@ import secrets
 import smtplib
 import ssl
 import time
+from collections import Counter
 from collections.abc import Mapping
 from datetime import datetime, timedelta
 from email.message import EmailMessage
@@ -24,6 +25,12 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 from streamlit.errors import StreamlitSecretNotFoundError
+from visitor_tracking import (
+    VISITOR_LOG_CSV,
+    VISITOR_LOG_HEADERS,
+    append_local_submission_row,
+    build_visitor_row,
+)
 
 APP_DIR = Path(__file__).parent
 DATA_DIR = APP_DIR / "submissions"
@@ -79,6 +86,7 @@ _ENSURED_WORKSHEETS: set[str] = set()
 PASSWORD_RESET_CODE_LENGTH = 4
 PASSWORD_RESET_TTL_MINUTES = 60
 SUBMISSION_CACHE_TTL_SECONDS = 45
+VISITOR_LOG_COOLDOWN_SECONDS = 180
 RAZORPAY_KEY_ID_SECRET = "razorpay_key_id"
 RAZORPAY_KEY_SECRET_SECRET = "razorpay_key_secret"
 RAZORPAY_CURRENCY = "INR"
@@ -184,6 +192,11 @@ SUBMISSION_SCHEMAS = {
             "time_period",
             "message",
         ],
+    },
+    VISITOR_LOG_CSV: {
+        "worksheet": "visitor_logs",
+        "label": "Site visitors",
+        "headers": VISITOR_LOG_HEADERS,
     },
     USER_ACCOUNTS_CSV: {
         "worksheet": "user_accounts",
@@ -1045,7 +1058,7 @@ def qr_code_png_bytes(data: str) -> bytes | None:
     )
     qr.add_data(clean_data)
     qr.make(fit=True)
-    image = qr.make_image(fill_color="#4a6741", back_color="#f7f0e8")
+    image = qr.make_image(fill_color="#33512f", back_color="#f5f8ef")
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
@@ -1103,11 +1116,11 @@ def render_phonepe_test_qr(
             position: relative;
             overflow: hidden;
             background:
-                radial-gradient(circle at top right, rgba(196, 120, 90, 0.18), rgba(232, 168, 130, 0) 34%),
-                linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 240, 232, 0.98) 100%);
-            border: 1px solid rgba(196, 120, 90, 0.18);
+                radial-gradient(circle at top right, rgba(167, 201, 122, 0.28), rgba(167, 201, 122, 0) 34%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 248, 239, 0.98) 100%);
+            border: 1px solid rgba(127, 169, 86, 0.2);
             border-radius: 28px;
-            box-shadow: 0 24px 60px rgba(86, 58, 42, 0.12);
+            box-shadow: 0 24px 60px rgba(76, 109, 63, 0.14);
             padding: 1.65rem 1.4rem 1.4rem;
             text-align: center;
         }}
@@ -1118,7 +1131,7 @@ def render_phonepe_test_qr(
             width: 12rem;
             height: 12rem;
             border-radius: 999px;
-            background: radial-gradient(circle, rgba(196, 120, 90, 0.18), rgba(232, 168, 130, 0) 70%);
+            background: radial-gradient(circle, rgba(127, 169, 86, 0.2), rgba(127, 169, 86, 0) 70%);
             pointer-events: none;
         }}
         .phonepe-test-brand {{
@@ -1159,7 +1172,7 @@ def render_phonepe_test_qr(
             text-transform: uppercase;
         }}
         .phonepe-test-theme {{
-            color: #4a6741;
+            color: #3f5a31;
             font-size: 0.78rem;
             font-weight: 800;
             letter-spacing: 0.16em;
@@ -1167,7 +1180,7 @@ def render_phonepe_test_qr(
             text-transform: uppercase;
         }}
         .phonepe-test-caption {{
-            color: #3d2b1f;
+            color: #20263b;
             font-size: 1rem;
             line-height: 1.5;
             margin: 0 0 1.35rem;
@@ -1191,7 +1204,7 @@ def render_phonepe_test_qr(
             width: 100%;
         }}
         .phonepe-test-payee {{
-            color: #3d2b1f;
+            color: #151827;
             font-size: 1.15rem;
             font-weight: 900;
             letter-spacing: 0.05em;
@@ -1201,7 +1214,7 @@ def render_phonepe_test_qr(
             text-transform: uppercase;
         }}
         .phonepe-test-upi {{
-            color: #705c4d;
+            color: #446236;
             font-size: 0.92rem;
             font-weight: 700;
             margin-top: 0.35rem;
@@ -1226,10 +1239,10 @@ def render_phonepe_test_qr(
             z-index: 1;
         }}
         .phonepe-test-chip {{
-            background: rgba(232, 168, 130, 0.14);
-            border: 1px solid rgba(196, 120, 90, 0.16);
+            background: rgba(167, 201, 122, 0.16);
+            border: 1px solid rgba(127, 169, 86, 0.18);
             border-radius: 999px;
-            color: #4a6741;
+            color: #3f5a31;
             font-size: 0.75rem;
             font-weight: 800;
             letter-spacing: 0.04em;
@@ -2252,6 +2265,90 @@ def current_learner_profile() -> dict[str, str]:
     }
 
 
+def streamlit_context_headers() -> dict[str, str]:
+    context = getattr(st, "context", None)
+    raw_headers = getattr(context, "headers", None) if context is not None else None
+    if raw_headers is None:
+        return {}
+    try:
+        return {str(key): str(value) for key, value in raw_headers.items()}
+    except Exception:
+        try:
+            return dict(raw_headers)
+        except Exception:
+            return {}
+
+
+def streamlit_context_header(name: str) -> str:
+    target = name.lower()
+    for key, value in streamlit_context_headers().items():
+        if str(key).lower() == target:
+            return str(value)
+    return ""
+
+
+def streamlit_client_ip() -> str:
+    context = getattr(st, "context", None)
+    direct_ip = str(getattr(context, "ip_address", "") or "").strip() if context is not None else ""
+    if direct_ip:
+        return direct_ip
+    forwarded = streamlit_context_header("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return streamlit_context_header("x-real-ip")
+
+
+def page_slug(page: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", str(page).strip().lower()).strip("-")
+    return slug or "dashboard"
+
+
+def app_visit_path(page: str) -> str:
+    base = APP_BASE_PATH.rstrip("/") or "/"
+    return f"{base}/?view={page_slug(page)}"
+
+
+def log_current_app_visit() -> None:
+    page = str(st.session_state.get("page", PAGE_NAMES[0])).strip() or PAGE_NAMES[0]
+    learner = current_learner_profile()
+    account_email = normalize_email(learner.get("email", ""))
+    visitor_type = "team" if admin_authenticated() or page == "Admin" else "learner" if account_email else "guest"
+    row = build_visitor_row(
+        surface="Academy app",
+        page=page,
+        path=app_visit_path(page),
+        visitor_type=visitor_type,
+        visitor_name=learner.get("full_name", "") or ("Matrika team" if visitor_type == "team" else ""),
+        account_email=account_email,
+        ip_address=streamlit_client_ip(),
+        user_agent=streamlit_context_header("user-agent"),
+        accept_language=streamlit_context_header("accept-language"),
+        referrer=streamlit_context_header("referer") or streamlit_context_header("referrer"),
+        own_host=PUBLIC_SITE_HOST,
+    )
+    signature = "|".join(
+        [
+            row.get("surface", ""),
+            row.get("page", ""),
+            row.get("path", ""),
+            row.get("account_email", ""),
+            row.get("ip_masked", ""),
+            row.get("browser", ""),
+        ]
+    )
+    recent_visits = dict(st.session_state.get("recent_visit_logs", {}))
+    now = time.time()
+    if now - float(recent_visits.get(signature, 0) or 0) < VISITOR_LOG_COOLDOWN_SECONDS:
+        return
+    recent_visits[signature] = now
+    st.session_state.recent_visit_logs = {
+        key: moment
+        for key, moment in recent_visits.items()
+        if now - float(moment or 0) < 3600
+    }
+    append_local_submission_row(VISITOR_LOG_CSV, VISITOR_LOG_HEADERS, row)
+
+
 def sync_learner_session(account: Mapping[str, object]) -> None:
     st.session_state.learner_authenticated = True
     st.session_state.learner_name = str(account.get("full_name", "")).strip()
@@ -2556,6 +2653,63 @@ def sanitize_rows_for_admin(csv_name: str, rows: list[dict[str, str]]) -> list[d
         return sanitized
 
     return rows
+
+
+def visitor_identity_key(row: dict[str, str]) -> str:
+    account_email = normalize_email(row.get("account_email", ""))
+    if account_email:
+        return f"account:{account_email}"
+    parts = [
+        row.get("ip_masked", ""),
+        row.get("browser", ""),
+        row.get("device", ""),
+        row.get("referrer", ""),
+    ]
+    return "anon:" + "|".join(parts)
+
+
+def visitor_summary_tables(rows: list[dict[str, str]]) -> tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]]]:
+    page_counts = Counter(row.get("page", "Unknown") or "Unknown" for row in rows)
+    referrer_counts = Counter(row.get("referrer", "Direct") or "Direct" for row in rows)
+    visitor_counts = Counter(row.get("visitor_type", "guest") or "guest" for row in rows)
+    page_rows = [{"page": page, "visits": count} for page, count in page_counts.most_common(6)]
+    referrer_rows = [{"referrer": referrer, "visits": count} for referrer, count in referrer_counts.most_common(6)]
+    visitor_type_rows = [{"visitor_type": visitor_type, "visits": count} for visitor_type, count in visitor_counts.most_common()]
+    return page_rows, referrer_rows, visitor_type_rows
+
+
+def render_visitor_admin_summary(rows: list[dict[str, str]]) -> None:
+    if not rows:
+        return
+
+    today = current_time().date()
+    visits_today = 0
+    for row in rows:
+        visited_at = parse_timestamp(row.get("visited_at", ""))
+        if visited_at and visited_at.date() == today:
+            visits_today += 1
+
+    unique_visitors = len({visitor_identity_key(row) for row in rows})
+    signed_in_visits = sum(1 for row in rows if normalize_email(row.get("account_email", "")))
+    visitor_metrics = [
+        {"label": "Tracked visits", "value": str(len(rows)), "note": "Landing + academy traffic"},
+        {"label": "Visitors today", "value": str(visits_today), "note": "Based on IST timestamps"},
+        {"label": "Unique signals", "value": str(unique_visitors), "note": "Account email or masked visitor signal"},
+        {"label": "Signed-in visits", "value": str(signed_in_visits), "note": "Learner or team visits with an email"},
+    ]
+    render_metric_grid(visitor_metrics)
+
+    page_rows, referrer_rows, visitor_type_rows = visitor_summary_tables(rows)
+    summary_columns = st.columns(3)
+    with summary_columns[0]:
+        st.caption("Top pages")
+        st.dataframe(page_rows, use_container_width=True, hide_index=True)
+    with summary_columns[1]:
+        st.caption("Top referrers")
+        st.dataframe(referrer_rows, use_container_width=True, hide_index=True)
+    with summary_columns[2]:
+        st.caption("Visitor mix")
+        st.dataframe(visitor_type_rows, use_container_width=True, hide_index=True)
 
 
 def jump_to(page: str) -> None:
@@ -2892,37 +3046,23 @@ def apply_theme() -> None:
     buddha_background = buddha_background_data_uri()
     css = """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;700;800&display=swap');
-        @view-transition {
-            navigation: auto;
-        }
-
-        ::view-transition-group(*),
-        ::view-transition-old(*),
-        ::view-transition-new(*) {
-            animation-duration: 0.6s;
-            animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&display=swap');
 
         :root {
-            --bg: #f7f0e8;
-            --bg-soft: #fbf5ef;
-            --bg-deep: #f0dfd2;
-            --ink: #3d2b1f;
-            --muted: #705c4d;
-            --pista: #8fa876;
-            --pista-deep: #7a9564;
-            --forest: #4a6741;
-            --moss: #425339;
-            --lotus: #fffaf5;
-            --mist: #f4eadf;
-            --terracotta: #c4785a;
-            --terracotta-deep: #a96045;
-            --blush: #e8a882;
-            --violet: #c4a8c8;
-            --line: rgba(74, 103, 65, 0.13);
-            --card: rgba(255, 250, 245, 0.72);
-            --shadow: 0 14px 40px rgba(86, 58, 42, 0.08);
+            --bg: #f7faf2;
+            --bg-soft: #edf4e4;
+            --bg-deep: #deebcb;
+            --ink: #18251d;
+            --muted: #59695f;
+            --pista: #a7c97a;
+            --pista-deep: #88ae60;
+            --forest: #39513a;
+            --moss: #29402c;
+            --lotus: #fcfef9;
+            --mist: #f1f6ea;
+            --line: rgba(57, 81, 58, 0.12);
+            --card: rgba(255, 255, 255, 0.68);
+            --shadow: 0 12px 36px rgba(38, 61, 42, 0.08);
         }
 
         * {
@@ -2932,7 +3072,7 @@ def apply_theme() -> None:
         html,
         body,
         [class*="css"] {
-            font-family: "DM Sans", sans-serif;
+            font-family: "Instrument Sans", sans-serif;
             color: var(--ink);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -2947,10 +3087,10 @@ def apply_theme() -> None:
             position: relative;
             isolation: isolate;
             background:
-                radial-gradient(circle at 10% 16%, rgba(196, 120, 90, 0.14), transparent 24%),
-                radial-gradient(circle at 84% 10%, rgba(196, 120, 90, 0.16), transparent 20%),
-                radial-gradient(circle at 50% 100%, rgba(232, 168, 130, 0.16), transparent 28%),
-                linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 56%, var(--bg-deep) 100%);
+                radial-gradient(circle at 10% 16%, rgba(167, 201, 122, 0.22), transparent 24%),
+                radial-gradient(circle at 84% 10%, rgba(127, 169, 86, 0.18), transparent 20%),
+                radial-gradient(circle at 50% 100%, rgba(214, 230, 191, 0.45), transparent 28%),
+                linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 56%, #f2f7ea 100%);
         }
 
         .stApp::before {
@@ -2967,7 +3107,7 @@ def apply_theme() -> None:
             opacity: 0.2;
             pointer-events: none;
             z-index: 0;
-            filter: drop-shadow(0 20px 34px rgba(86, 58, 42, 0.12));
+            filter: drop-shadow(0 20px 34px rgba(76, 109, 63, 0.12));
         }
 
         [data-testid="stSidebar"],
@@ -3001,14 +3141,14 @@ def apply_theme() -> None:
         h2,
         h3,
         h4 {
-            font-family: "Cormorant Garamond", serif;
-            color: var(--forest);
-            letter-spacing: -0.03em;
+            font-family: "Instrument Sans", sans-serif;
+            color: var(--ink);
+            letter-spacing: -0.035em;
         }
 
         [data-testid="stSidebar"] {
             background:
-                linear-gradient(180deg, rgba(255, 250, 245, 0.95), rgba(244, 234, 223, 0.92));
+                linear-gradient(180deg, rgba(248, 253, 241, 0.97), rgba(232, 241, 217, 0.95));
             border-right: 1px solid var(--line);
             backdrop-filter: blur(12px);
         }
@@ -3053,7 +3193,7 @@ def apply_theme() -> None:
             height: 64px;
             border-radius: 20px;
             object-fit: cover;
-            box-shadow: 0 12px 26px rgba(86, 58, 42, 0.16);
+            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.18);
         }
 
         .sidebar-brand h2 {
@@ -3093,7 +3233,7 @@ def apply_theme() -> None:
             font-family: "Cormorant Garamond", serif;
             font-size: 2rem;
             font-weight: 700;
-            box-shadow: 0 12px 26px rgba(86, 58, 42, 0.16);
+            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.18);
         }
 
         .topbar-shell {
@@ -3106,7 +3246,7 @@ def apply_theme() -> None:
             margin-bottom: 1rem;
             border-radius: 30px;
             border: 1px solid var(--line);
-            background: linear-gradient(135deg, rgba(255, 250, 245, 0.88), rgba(244, 234, 223, 0.8));
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.9), rgba(232, 241, 217, 0.86));
             box-shadow: var(--shadow);
             backdrop-filter: blur(12px);
             animation: matrika-fade-up 0.55s ease both;
@@ -3132,7 +3272,7 @@ def apply_theme() -> None:
             height: 58px;
             border-radius: 18px;
             object-fit: cover;
-            box-shadow: 0 12px 24px rgba(86, 58, 42, 0.14);
+            box-shadow: 0 12px 24px rgba(76, 109, 63, 0.16);
         }
 
         .brand-lockup {
@@ -3142,9 +3282,9 @@ def apply_theme() -> None:
         }
 
         .brand-label {
-            font-family: "Cormorant Garamond", serif;
+            font-family: "Instrument Sans", sans-serif;
             font-size: 1.68rem;
-            font-weight: 600;
+            font-weight: 700;
             line-height: 0.9;
         }
 
@@ -3167,12 +3307,12 @@ def apply_theme() -> None:
             min-height: 2.5rem;
             padding: 0.55rem 0.9rem;
             border-radius: 999px;
-            border: 1px solid rgba(86, 58, 42, 0.16);
-            background: rgba(255, 249, 244, 0.92);
+            border: 1px solid rgba(76, 109, 63, 0.18);
+            background: rgba(251, 255, 245, 0.92);
             color: var(--ink) !important;
             text-decoration: none;
             font-weight: 800;
-            box-shadow: 0 10px 20px rgba(86, 58, 42, 0.08);
+            box-shadow: 0 10px 20px rgba(76, 109, 63, 0.08);
         }
 
         .topbar-chip:hover {
@@ -3181,8 +3321,8 @@ def apply_theme() -> None:
         }
 
         .site-chip {
-            background: linear-gradient(135deg, rgba(232, 168, 130, 0.24), rgba(196, 120, 90, 0.16)) !important;
-            border-color: rgba(196, 120, 90, 0.24) !important;
+            background: linear-gradient(135deg, rgba(214, 230, 191, 0.92), rgba(167, 201, 122, 0.36)) !important;
+            border-color: rgba(127, 169, 86, 0.3) !important;
         }
 
         .topnav-panel {
@@ -3190,7 +3330,7 @@ def apply_theme() -> None:
             margin-bottom: 0.9rem;
             border-radius: 26px;
             border: 1px solid var(--line);
-            background: linear-gradient(135deg, rgba(255, 250, 245, 0.9), rgba(244, 234, 223, 0.76));
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.92), rgba(234, 243, 220, 0.86));
             box-shadow: var(--shadow);
             animation: matrika-fade-up 0.5s ease both;
         }
@@ -3205,9 +3345,9 @@ def apply_theme() -> None:
             margin: 0 0 0.9rem;
             padding: 0.9rem 1rem;
             border-radius: 22px;
-            border: 1px solid rgba(196, 120, 90, 0.18);
-            background: rgba(255, 250, 245, 0.86);
-            box-shadow: 0 12px 26px rgba(86, 58, 42, 0.08);
+            border: 1px solid rgba(127, 169, 86, 0.22);
+            background: rgba(251, 255, 245, 0.88);
+            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.08);
             color: var(--muted);
             line-height: 1.6;
         }
@@ -3242,15 +3382,15 @@ def apply_theme() -> None:
         }
 
         .flash-banner-success {
-            background: linear-gradient(135deg, rgba(255, 250, 245, 0.94), rgba(240, 223, 210, 0.82));
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.96), rgba(230, 241, 213, 0.96));
         }
 
         .flash-banner-info {
-            background: linear-gradient(135deg, rgba(251, 255, 245, 0.95), rgba(244, 234, 223, 0.84));
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.95), rgba(238, 246, 229, 0.95));
         }
 
         .flash-banner-warning {
-            background: linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(244, 234, 223, 0.88));
+            background: linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(233, 241, 214, 0.96));
         }
 
         .page-loader-overlay {
@@ -3261,7 +3401,7 @@ def apply_theme() -> None:
             align-items: center;
             justify-content: center;
             padding: 1rem;
-            background: rgba(247, 240, 232, 0.66);
+            background: rgba(245, 248, 239, 0.62);
             backdrop-filter: blur(6px);
         }
 
@@ -3275,21 +3415,24 @@ def apply_theme() -> None:
             padding: 1.25rem 1.4rem;
             border-radius: 28px;
             border: 1px solid var(--line);
-            background: rgba(255, 250, 245, 0.94);
+            background: rgba(252, 255, 247, 0.96);
             box-shadow: 0 24px 60px rgba(60, 92, 47, 0.18);
         }
 
         .page-loader-spinner {
             width: 60px;
             height: 60px;
-            border-radius: 42% 58% 52% 48% / 45% 42% 58% 55%;
-            background:
-                radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 28%),
-                conic-gradient(from 0deg, var(--terracotta), var(--blush), var(--pista), var(--violet), var(--terracotta));
-            box-shadow:
-                0 0 0 8px rgba(196, 120, 90, 0.08),
-                0 18px 36px rgba(86, 58, 42, 0.12);
-            animation: matrika-petal-spin 4s ease-in-out infinite;
+            border-radius: 999px;
+            border: 5px solid rgba(167, 201, 122, 0.2);
+            border-top-color: var(--pista-deep);
+            border-right-color: var(--forest);
+            animation: matrika-spin 0.9s linear infinite;
+        }
+
+        .page-loader-title {
+            font-family: "Cormorant Garamond", serif;
+            font-size: 1.9rem;
+            line-height: 0.95;
         }
 
         .page-loader-copy {
@@ -3298,12 +3441,17 @@ def apply_theme() -> None:
             line-height: 1.55;
         }
 
+        @keyframes matrika-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         .eyebrow {
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
             border-radius: 999px;
-            background: rgba(143, 168, 118, 0.14);
+            background: rgba(167, 201, 122, 0.18);
             color: var(--forest);
             font-size: 0.72rem;
             font-weight: 800;
@@ -3317,7 +3465,7 @@ def apply_theme() -> None:
             overflow: hidden;
             padding: clamp(1.5rem, 3vw, 2.4rem);
             background:
-                linear-gradient(145deg, rgba(255, 250, 245, 0.9), rgba(244, 234, 223, 0.78));
+                linear-gradient(145deg, rgba(251, 255, 245, 0.92), rgba(229, 239, 213, 0.8));
             animation: matrika-fade-up 0.65s ease both;
         }
 
@@ -3345,8 +3493,8 @@ def apply_theme() -> None:
             border-radius: 50%;
             background: radial-gradient(
                 circle,
-                rgba(196, 120, 90, 0.18) 0%,
-                rgba(196, 120, 90, 0.08) 52%,
+                rgba(167, 201, 122, 0.28) 0%,
+                rgba(167, 201, 122, 0.08) 52%,
                 transparent 72%
             );
             pointer-events: none;
@@ -3383,8 +3531,8 @@ def apply_theme() -> None:
             display: inline-flex;
             align-items: center;
             border-radius: 999px;
-            background: rgba(255, 250, 245, 0.86);
-            border: 1px solid rgba(86, 58, 42, 0.14);
+            background: rgba(251, 255, 245, 0.88);
+            border: 1px solid rgba(76, 109, 63, 0.16);
             color: var(--forest);
             font-weight: 700;
             font-size: 0.86rem;
@@ -3394,7 +3542,7 @@ def apply_theme() -> None:
         .page-intro {
             padding: 1.15rem 1.2rem 1.1rem;
             margin-bottom: 1rem;
-            background: linear-gradient(135deg, rgba(255, 250, 245, 0.88), rgba(240, 223, 210, 0.68));
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.9), rgba(230, 241, 214, 0.82));
         }
 
         .page-intro h1 {
@@ -3473,7 +3621,7 @@ def apply_theme() -> None:
         .contact-card:hover,
         .metric-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 22px 42px rgba(86, 58, 42, 0.14);
+            box-shadow: 0 22px 42px rgba(76, 109, 63, 0.16);
             border-color: rgba(127, 169, 86, 0.28);
         }
 
@@ -3493,8 +3641,8 @@ def apply_theme() -> None:
 
         .story-card {
             background:
-                radial-gradient(circle at top right, rgba(232, 168, 130, 0.14), rgba(232, 168, 130, 0) 34%),
-                linear-gradient(135deg, rgba(255, 252, 248, 0.82), rgba(244, 234, 223, 0.88));
+                radial-gradient(circle at top right, rgba(167, 201, 122, 0.16), rgba(167, 201, 122, 0) 34%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(241, 247, 233, 0.92));
             min-height: 100%;
         }
 
@@ -3535,7 +3683,7 @@ def apply_theme() -> None:
             display: inline-flex;
             align-items: center;
             border-radius: 999px;
-            background: rgba(143, 168, 118, 0.14);
+            background: rgba(167, 201, 122, 0.18);
             color: var(--forest);
             padding: 0.36rem 0.64rem;
             font-size: 0.78rem;
@@ -3544,7 +3692,7 @@ def apply_theme() -> None:
 
         .metric-card {
             padding: 1rem;
-            background: linear-gradient(180deg, rgba(255, 250, 245, 0.86), rgba(244, 234, 223, 0.78));
+            background: linear-gradient(180deg, rgba(251, 255, 245, 0.86), rgba(237, 245, 228, 0.82));
             transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
             animation: matrika-fade-up 0.72s ease both;
         }
@@ -3559,7 +3707,7 @@ def apply_theme() -> None:
 
         .metric-value {
             margin: 0.2rem 0 0.2rem;
-            font-family: "DM Sans", sans-serif;
+            font-family: "Instrument Sans", sans-serif;
             font-size: 2rem;
             line-height: 1;
             font-weight: 700;
@@ -3582,9 +3730,9 @@ def apply_theme() -> None:
             align-items: start;
             padding: 0.95rem 1rem;
             border-radius: 22px;
-            background: rgba(255, 250, 245, 0.82);
+            background: rgba(251, 255, 245, 0.76);
             border: 1px solid var(--line);
-            box-shadow: 0 10px 24px rgba(86, 58, 42, 0.08);
+            box-shadow: 0 10px 24px rgba(76, 109, 63, 0.08);
         }
 
         .timeline-index {
@@ -3616,11 +3764,11 @@ def apply_theme() -> None:
             overflow: hidden;
             padding: 1.2rem 1.2rem 1.15rem;
             border-radius: 30px;
-            border: 1px solid rgba(196, 120, 90, 0.18);
+            border: 1px solid rgba(127, 169, 86, 0.2);
             background:
                 radial-gradient(circle at top left, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 22%),
-                linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(244, 234, 223, 0.82));
-            box-shadow: 0 16px 38px rgba(86, 58, 42, 0.08);
+                linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(236, 245, 227, 0.9));
+            box-shadow: 0 16px 38px rgba(38, 61, 42, 0.08);
             margin: 1rem 0 1.15rem;
             animation: matrika-fade-up 0.62s ease both;
         }
@@ -3632,7 +3780,7 @@ def apply_theme() -> None:
             width: 220px;
             height: 220px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(196, 120, 90, 0.14), rgba(232, 168, 130, 0) 68%);
+            background: radial-gradient(circle, rgba(167, 201, 122, 0.22), rgba(167, 201, 122, 0) 68%);
             pointer-events: none;
         }
 
@@ -3662,9 +3810,9 @@ def apply_theme() -> None:
             align-items: start;
             padding: 1rem 1.05rem;
             border-radius: 24px;
-            border: 1px solid rgba(196, 120, 90, 0.16);
+            border: 1px solid rgba(127, 169, 86, 0.18);
             background: rgba(255, 255, 255, 0.76);
-            box-shadow: 0 12px 28px rgba(86, 58, 42, 0.06);
+            box-shadow: 0 12px 28px rgba(38, 61, 42, 0.06);
             animation: matrika-fade-up 0.58s ease both;
         }
 
@@ -3674,7 +3822,7 @@ def apply_theme() -> None:
             border-radius: 999px;
             display: grid;
             place-items: center;
-            background: linear-gradient(135deg, rgba(196, 120, 90, 0.94), rgba(74, 103, 65, 0.88));
+            background: linear-gradient(135deg, rgba(173, 200, 123, 0.98), rgba(73, 100, 65, 0.98));
             color: white;
             font-size: 0.88rem;
             font-weight: 800;
@@ -3694,10 +3842,10 @@ def apply_theme() -> None:
 
         .callout {
             border-radius: 22px;
-            border: 1px solid rgba(196, 120, 90, 0.22);
-            background: linear-gradient(135deg, rgba(255, 250, 245, 0.88), rgba(244, 234, 223, 0.82));
+            border: 1px solid rgba(127, 169, 86, 0.26);
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.9), rgba(236, 245, 227, 0.84));
             padding: 1rem 1.1rem;
-            box-shadow: 0 14px 28px rgba(86, 58, 42, 0.08);
+            box-shadow: 0 14px 28px rgba(76, 109, 63, 0.08);
         }
 
         .illustration-panel {
@@ -3710,9 +3858,9 @@ def apply_theme() -> None:
             padding: 1.2rem 1.2rem 1.1rem;
             margin: 1rem 0 1.2rem;
             border-radius: 28px;
-            border: 1px solid rgba(196, 120, 90, 0.2);
-            background: linear-gradient(135deg, rgba(255, 250, 245, 0.92), rgba(244, 234, 223, 0.76));
-            box-shadow: 0 18px 38px rgba(86, 58, 42, 0.1);
+            border: 1px solid rgba(127, 169, 86, 0.24);
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.94), rgba(232, 241, 217, 0.78));
+            box-shadow: 0 18px 38px rgba(76, 109, 63, 0.1);
             animation: matrika-fade-up 0.58s ease both;
         }
 
@@ -3723,7 +3871,7 @@ def apply_theme() -> None:
             width: 240px;
             height: 240px;
             border-radius: 999px;
-            background: radial-gradient(circle, rgba(196, 120, 90, 0.18), rgba(232, 168, 130, 0) 70%);
+            background: radial-gradient(circle, rgba(167, 201, 122, 0.24), rgba(167, 201, 122, 0) 70%);
             pointer-events: none;
         }
 
@@ -3756,7 +3904,7 @@ def apply_theme() -> None:
             position: absolute;
             inset: 18% 14%;
             border-radius: 999px;
-            border: 1px solid rgba(196, 120, 90, 0.18);
+            border: 1px solid rgba(127, 169, 86, 0.22);
             animation: matrika-float 7s ease-in-out infinite;
         }
 
@@ -3766,7 +3914,7 @@ def apply_theme() -> None:
             position: absolute;
             inset: 12%;
             border-radius: 999px;
-            border: 1px dashed rgba(196, 120, 90, 0.16);
+            border: 1px dashed rgba(127, 169, 86, 0.18);
         }
 
         .illustration-orbit::after {
@@ -3781,10 +3929,10 @@ def apply_theme() -> None:
             display: grid;
             place-items: center;
             border-radius: 999px;
-            background: linear-gradient(135deg, rgba(196, 120, 90, 0.92), rgba(74, 103, 65, 0.86));
+            background: linear-gradient(135deg, rgba(167, 201, 122, 0.94), rgba(76, 109, 63, 0.94));
             color: white;
             font-size: 3rem;
-            box-shadow: 0 16px 34px rgba(86, 58, 42, 0.16);
+            box-shadow: 0 16px 34px rgba(76, 109, 63, 0.18);
         }
 
         .illustration-symbol::before {
@@ -3792,7 +3940,7 @@ def apply_theme() -> None:
             position: absolute;
             inset: -1.15rem;
             border-radius: 999px;
-            border: 1px solid rgba(196, 120, 90, 0.18);
+            border: 1px solid rgba(127, 169, 86, 0.22);
         }
 
         .illustration-mantra {
@@ -3802,8 +3950,8 @@ def apply_theme() -> None:
             transform: translateX(-50%);
             padding: 0.42rem 0.78rem;
             border-radius: 999px;
-            background: rgba(255, 250, 245, 0.88);
-            border: 1px solid rgba(196, 120, 90, 0.18);
+            background: rgba(251, 255, 245, 0.9);
+            border: 1px solid rgba(127, 169, 86, 0.2);
             color: var(--forest);
             font-size: 0.8rem;
             font-weight: 800;
@@ -3821,9 +3969,9 @@ def apply_theme() -> None:
             padding: 1rem 1.05rem;
             margin-bottom: 0.85rem;
             border-radius: 22px;
-            border: 1px solid rgba(196, 120, 90, 0.18);
-            background: linear-gradient(135deg, rgba(255, 250, 245, 0.9), rgba(244, 234, 223, 0.76));
-            box-shadow: 0 12px 26px rgba(86, 58, 42, 0.08);
+            border: 1px solid rgba(127, 169, 86, 0.22);
+            background: linear-gradient(135deg, rgba(251, 255, 245, 0.92), rgba(234, 243, 220, 0.86));
+            box-shadow: 0 12px 26px rgba(76, 109, 63, 0.08);
             animation: matrika-fade-up 0.5s ease both;
         }
 
@@ -3836,7 +3984,7 @@ def apply_theme() -> None:
             background: linear-gradient(135deg, var(--pista), var(--forest));
             color: white;
             font-size: 1.05rem;
-            box-shadow: 0 10px 20px rgba(86, 58, 42, 0.14);
+            box-shadow: 0 10px 20px rgba(76, 109, 63, 0.16);
         }
 
         .form-banner h3 {
@@ -3856,7 +4004,7 @@ def apply_theme() -> None:
             padding: 1rem 1.15rem;
             border-radius: 24px;
             border: 1px solid var(--line);
-            background: rgba(255, 250, 245, 0.84);
+            background: rgba(251, 255, 245, 0.84);
             box-shadow: var(--shadow);
         }
 
@@ -3873,23 +4021,23 @@ def apply_theme() -> None:
             color: white;
             font-weight: 800;
             padding: 0.68rem 1rem;
-            box-shadow: 0 12px 24px rgba(196, 120, 90, 0.18);
+            box-shadow: 0 12px 24px rgba(127, 169, 86, 0.26);
             transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
         }
 
         .stButton > button:hover {
             transform: translateY(-1px);
             filter: brightness(0.98);
-            box-shadow: 0 14px 28px rgba(86, 58, 42, 0.18);
+            box-shadow: 0 14px 28px rgba(76, 109, 63, 0.24);
         }
 
         [data-testid="stLinkButton"] a {
             border-radius: 999px !important;
-            border: 1px solid rgba(86, 58, 42, 0.14) !important;
-            background: rgba(255, 250, 245, 0.86) !important;
+            border: 1px solid rgba(76, 109, 63, 0.16) !important;
+            background: rgba(251, 255, 245, 0.86) !important;
             color: var(--ink) !important;
             font-weight: 800 !important;
-            box-shadow: 0 10px 20px rgba(86, 58, 42, 0.08) !important;
+            box-shadow: 0 10px 20px rgba(76, 109, 63, 0.08) !important;
         }
 
         div[data-baseweb="input"] > div,
@@ -3898,8 +4046,8 @@ def apply_theme() -> None:
         [data-testid="stNumberInput"] input,
         [data-testid="stTextInput"] input {
             border-radius: 18px !important;
-            border: 1px solid rgba(86, 58, 42, 0.16) !important;
-            background: rgba(255, 250, 245, 0.92) !important;
+            border: 1px solid rgba(76, 109, 63, 0.18) !important;
+            background: rgba(251, 255, 245, 0.94) !important;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
             color: var(--ink) !important;
         }
@@ -3923,9 +4071,9 @@ def apply_theme() -> None:
             overflow: hidden;
             padding: 1.05rem 1rem 0.35rem;
             border-radius: 28px;
-            border: 1px solid rgba(196, 120, 90, 0.2);
-            background: linear-gradient(145deg, rgba(255, 250, 245, 0.94), rgba(244, 234, 223, 0.72));
-            box-shadow: 0 18px 36px rgba(86, 58, 42, 0.1);
+            border: 1px solid rgba(127, 169, 86, 0.24);
+            background: linear-gradient(145deg, rgba(251, 255, 245, 0.95), rgba(234, 243, 220, 0.8));
+            box-shadow: 0 18px 36px rgba(76, 109, 63, 0.1);
             margin-bottom: 0.4rem;
             animation: matrika-fade-up 0.62s ease both;
         }
@@ -3972,13 +4120,13 @@ def apply_theme() -> None:
         .stSpinner > div {
             padding: 1rem 1.15rem;
             border-radius: 22px;
-            background: rgba(255, 250, 245, 0.92);
+            background: rgba(251, 255, 245, 0.94);
             border: 1px solid var(--line);
             box-shadow: var(--shadow);
         }
 
         hr {
-            border-color: rgba(86, 58, 42, 0.12);
+            border-color: rgba(76, 109, 63, 0.12);
         }
 
         @keyframes matrika-fade-up {
@@ -4024,7 +4172,7 @@ def apply_theme() -> None:
             width: min(34vw, 320px);
             height: min(34vw, 320px);
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(86, 58, 42, 0.12), rgba(232, 168, 130, 0) 72%);
+            background: radial-gradient(circle, rgba(76, 109, 63, 0.12), rgba(76, 109, 63, 0) 72%);
             filter: blur(8px);
             animation: matrika-drift 14s ease-in-out infinite;
             pointer-events: none;
@@ -4050,7 +4198,7 @@ def apply_theme() -> None:
                 115deg,
                 rgba(255, 255, 255, 0.24) 0%,
                 rgba(255, 255, 255, 0.02) 34%,
-                rgba(196, 120, 90, 0.08) 58%,
+                rgba(167, 201, 122, 0.08) 58%,
                 rgba(255, 255, 255, 0.18) 100%
             );
             opacity: 0.7;
@@ -4061,19 +4209,19 @@ def apply_theme() -> None:
         .topnav-panel,
         .topnav-status {
             background:
-                radial-gradient(circle at top right, rgba(196, 120, 90, 0.14), rgba(232, 168, 130, 0) 34%),
-                linear-gradient(135deg, rgba(255, 252, 248, 0.76), rgba(244, 234, 223, 0.8));
-            border-color: rgba(196, 120, 90, 0.22);
-            box-shadow: 0 12px 34px rgba(86, 58, 42, 0.08);
+                radial-gradient(circle at top right, rgba(167, 201, 122, 0.22), rgba(167, 201, 122, 0) 34%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(238, 246, 228, 0.9));
+            border-color: rgba(127, 169, 86, 0.26);
+            box-shadow: 0 12px 34px rgba(38, 61, 42, 0.08);
         }
 
         .hero-card {
             border-radius: 34px;
             border-color: rgba(127, 169, 86, 0.28);
-            box-shadow: 0 18px 48px rgba(86, 58, 42, 0.08);
+            box-shadow: 0 18px 48px rgba(38, 61, 42, 0.08);
             background:
                 radial-gradient(circle at 14% 14%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 18%),
-                linear-gradient(140deg, rgba(255, 255, 255, 0.78), rgba(244, 234, 223, 0.78) 56%, rgba(232, 168, 130, 0.14));
+                linear-gradient(140deg, rgba(255, 255, 255, 0.78), rgba(233, 243, 220, 0.9) 56%, rgba(216, 232, 193, 0.92));
         }
 
         .hero-card::after {
@@ -4104,7 +4252,7 @@ def apply_theme() -> None:
         }
 
         .hero-copy-wrap .eyebrow {
-            box-shadow: 0 10px 24px rgba(86, 58, 42, 0.12);
+            box-shadow: 0 10px 24px rgba(76, 109, 63, 0.12);
         }
 
         .hero-visual {
@@ -4119,7 +4267,7 @@ def apply_theme() -> None:
             width: min(27vw, 250px);
             height: min(27vw, 250px);
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(196, 120, 90, 0.22), rgba(232, 168, 130, 0.05) 55%, rgba(232, 168, 130, 0) 76%);
+            background: radial-gradient(circle, rgba(167, 201, 122, 0.34), rgba(167, 201, 122, 0.06) 55%, rgba(167, 201, 122, 0) 76%);
             filter: blur(2px);
             animation: matrika-breathe 7.5s ease-in-out infinite;
         }
@@ -4128,7 +4276,7 @@ def apply_theme() -> None:
             position: absolute;
             inset: 12% 14%;
             border-radius: 50%;
-            border: 1px solid rgba(196, 120, 90, 0.18);
+            border: 1px solid rgba(127, 169, 86, 0.2);
             animation: matrika-spin-slow 18s linear infinite;
         }
 
@@ -4137,8 +4285,8 @@ def apply_theme() -> None:
             content: "";
             position: absolute;
             border-radius: 999px;
-            background: linear-gradient(135deg, rgba(196, 120, 90, 0.9), rgba(74, 103, 65, 0.86));
-            box-shadow: 0 12px 28px rgba(86, 58, 42, 0.16);
+            background: linear-gradient(135deg, rgba(167, 201, 122, 0.92), rgba(76, 109, 63, 0.9));
+            box-shadow: 0 12px 28px rgba(76, 109, 63, 0.18);
         }
 
         .hero-orbit-ring::before {
@@ -4164,9 +4312,9 @@ def apply_theme() -> None:
             display: grid;
             place-items: center;
             border-radius: 50%;
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(244, 234, 223, 0.82));
-            border: 1px solid rgba(196, 120, 90, 0.2);
-            box-shadow: 0 26px 52px rgba(86, 58, 42, 0.14);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(236, 245, 227, 0.9));
+            border: 1px solid rgba(127, 169, 86, 0.24);
+            box-shadow: 0 26px 52px rgba(76, 109, 63, 0.16);
             font-size: clamp(2.2rem, 4vw, 3rem);
             animation: matrika-float 8s ease-in-out infinite;
         }
@@ -4176,9 +4324,9 @@ def apply_theme() -> None:
             position: absolute;
             z-index: 1;
             border-radius: 999px;
-            border: 1px solid rgba(196, 120, 90, 0.16);
-            background: rgba(255, 252, 248, 0.82);
-            box-shadow: 0 16px 32px rgba(86, 58, 42, 0.12);
+            border: 1px solid rgba(127, 169, 86, 0.18);
+            background: rgba(255, 255, 255, 0.82);
+            box-shadow: 0 16px 32px rgba(76, 109, 63, 0.12);
             backdrop-filter: blur(12px);
             color: var(--ink);
         }
@@ -4222,7 +4370,7 @@ def apply_theme() -> None:
         .hero-stat-value {
             display: block;
             margin-top: 0.18rem;
-            font-family: "DM Sans", sans-serif;
+            font-family: "Instrument Sans", sans-serif;
             font-size: 1.12rem;
             font-weight: 700;
             line-height: 1;
@@ -4238,7 +4386,7 @@ def apply_theme() -> None:
 
         .pill {
             background: rgba(255, 255, 255, 0.72);
-            box-shadow: 0 10px 22px rgba(86, 58, 42, 0.08);
+            box-shadow: 0 10px 22px rgba(76, 109, 63, 0.08);
         }
 
         .feature-card,
@@ -4251,8 +4399,8 @@ def apply_theme() -> None:
         .illustration-panel,
         .form-banner,
         div[data-testid="stForm"] {
-            border-color: rgba(196, 120, 90, 0.18);
-            box-shadow: 0 10px 28px rgba(86, 58, 42, 0.06);
+            border-color: rgba(127, 169, 86, 0.2);
+            box-shadow: 0 10px 28px rgba(38, 61, 42, 0.06);
         }
 
         .feature-card:hover,
@@ -4271,22 +4419,11 @@ def apply_theme() -> None:
         [data-testid="stLinkButton"] a {
             position: relative;
             overflow: hidden;
+            background: rgba(255, 255, 255, 0.82) !important;
             color: var(--ink) !important;
+            border: 1px solid rgba(57, 81, 58, 0.1) !important;
+            box-shadow: 0 8px 24px rgba(38, 61, 42, 0.07) !important;
             backdrop-filter: blur(18px);
-        }
-
-        .stButton > button {
-            background: linear-gradient(135deg, var(--terracotta), var(--blush)) !important;
-            color: white !important;
-            border: 1px solid rgba(196, 120, 90, 0.16) !important;
-            box-shadow: 0 12px 28px rgba(196, 120, 90, 0.18) !important;
-            transition: transform 0.6s ease, box-shadow 0.6s ease, filter 0.6s ease;
-        }
-
-        [data-testid="stLinkButton"] a {
-            background: rgba(255, 249, 244, 0.9) !important;
-            border: 1px solid rgba(74, 103, 65, 0.12) !important;
-            box-shadow: 0 8px 24px rgba(86, 58, 42, 0.07) !important;
         }
 
         .stButton > button::after,
@@ -4302,12 +4439,6 @@ def apply_theme() -> None:
         .stButton > button:hover::after,
         [data-testid="stLinkButton"] a:hover::after {
             transform: translateX(130%);
-        }
-
-        .stButton > button:hover {
-            transform: translateY(-2px);
-            filter: brightness(1.01);
-            box-shadow: 0 18px 36px rgba(196, 120, 90, 0.22) !important;
         }
 
         @supports (animation-timeline: view()) {
@@ -4361,11 +4492,6 @@ def apply_theme() -> None:
         @keyframes matrika-breathe {
             0%, 100% { transform: scale(0.96); opacity: 0.72; }
             50% { transform: scale(1.04); opacity: 1; }
-        }
-
-        @keyframes matrika-petal-spin {
-            0%, 100% { transform: rotate(0deg) scale(0.96); }
-            50% { transform: rotate(180deg) scale(1.08); }
         }
 
         @keyframes matrika-pulse {
@@ -4469,49 +4595,6 @@ def apply_theme() -> None:
                 width: min(64vw, 280px);
                 height: min(80vw, 340px);
                 opacity: 0.12;
-            }
-        }
-
-        .floating-whatsapp {
-            position: fixed;
-            right: 1.2rem;
-            bottom: 1.2rem;
-            z-index: 120;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.8rem 1rem;
-            border-radius: 999px;
-            background: linear-gradient(135deg, var(--forest), var(--pista));
-            color: white !important;
-            text-decoration: none;
-            font-weight: 800;
-            box-shadow: 0 18px 36px rgba(74, 103, 65, 0.24);
-            transition: transform 0.6s ease, box-shadow 0.6s ease;
-        }
-
-        .floating-whatsapp:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 24px 40px rgba(74, 103, 65, 0.28);
-        }
-
-        .floating-whatsapp::before {
-            content: "✆";
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 1.65rem;
-            height: 1.65rem;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.16);
-        }
-
-        @media (max-width: 760px) {
-            .floating-whatsapp {
-                right: 0.8rem;
-                bottom: 0.8rem;
-                padding: 0.75rem 0.9rem;
-                font-size: 0.92rem;
             }
         }
         </style>
@@ -4757,7 +4840,6 @@ def render_topbar() -> None:
                 <a class="topbar-chip" href="{esc(build_whatsapp_url('Hi Matrika Academy, I need help with classes or admissions.'))}" target="_blank" rel="noopener noreferrer">Support</a>
             </div>
         </div>
-        <a class="floating-whatsapp" href="{esc(build_whatsapp_url('Hi Matrika Academy, I want help choosing the right program.'))}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
         """,
         unsafe_allow_html=True,
     )
@@ -5207,27 +5289,6 @@ def dashboard_page() -> None:
         "The homepage introduces trust, the program flow explains the fit, and the protected academy app handles the next step with calmer continuity.",
     )
     render_card_grid(APP_JOURNEY_CARDS, columns=3, class_name="story-card")
-    render_story_spotlight(
-        "Instructor bio",
-        f"Meet {MD_NAME}, who stewards the academy's teaching vision.",
-        f"{MD_NAME} guides the care-first direction of Matrika Yoga Academy across prenatal support, children's movement, and teacher mentoring. A dedicated portrait and full credential panel can be layered into this section as soon as the academy photo assets are ready.",
-    )
-    render_story_rail(
-        [
-            {
-                "title": "Free trial first",
-                "body": "Start with a low-pressure trial or guided consultation before choosing a longer program.",
-            },
-            {
-                "title": "Pick the right batch",
-                "body": "Use the pathfinder and schedule filters to move toward the right time period and track.",
-            },
-            {
-                "title": "Continue with support",
-                "body": "Admissions, payments, and follow-up stay linked to one learner account after the first step.",
-            },
-        ]
-    )
 
     if not learner_authenticated():
         render_section(
@@ -5744,29 +5805,6 @@ def programs_page() -> None:
         "These routes now explain what the journey feels like, who it is for, and how the academy follows through after the first session.",
     )
     render_card_grid(PROGRAM_STORY_CARDS, columns=3, class_name="story-card")
-    render_section(
-        "Pricing hints",
-        "Learners should be able to sense the fee range before they commit.",
-        "These starting figures give families a clearer expectation without forcing them into the payment flow too early.",
-    )
-    render_card_grid(PAYMENT_PLANS, columns=3, class_name="pricing-card")
-    demo_cols = st.columns(3)
-    with demo_cols[0]:
-        st.button(
-            "Book a free trial",
-            key="programs_free_trial",
-            use_container_width=True,
-            on_click=jump_to,
-            args=("Admissions",),
-        )
-    with demo_cols[1]:
-        st.link_button("Join a live preview", LIVE_ZOOM_URL, use_container_width=True)
-    with demo_cols[2]:
-        st.link_button(
-            "WhatsApp for a demo",
-            build_whatsapp_url("Hi Matrika Academy, I want to book a free trial or preview class."),
-            use_container_width=True,
-        )
     st.divider()
     render_program_comparison()
     st.divider()
@@ -6949,6 +6987,10 @@ def admin_page() -> None:
     if source_summary:
         st.caption("Submission summary")
         st.dataframe(source_summary, use_container_width=True, hide_index=True)
+    visitor_rows = load_submission_rows(VISITOR_LOG_CSV)
+    if visitor_rows:
+        st.caption("Visitor activity")
+        render_visitor_admin_summary(visitor_rows)
     runtime_issues = list(st.session_state.get("runtime_issues", []))
     if runtime_issues:
         st.caption("Recent runtime notices")
@@ -6959,7 +7001,8 @@ def admin_page() -> None:
         st.info("No submission files exist yet. Once users start sending forms, they will appear here.")
         return
 
-    selected_file = st.selectbox("Submission source", submission_files)
+    default_source_index = submission_files.index(VISITOR_LOG_CSV) if VISITOR_LOG_CSV in submission_files else 0
+    selected_file = st.selectbox("Submission source", submission_files, index=default_source_index)
     rows = load_submission_rows(selected_file)
     admin_rows = sanitize_rows_for_admin(selected_file, rows)
 
@@ -7015,6 +7058,7 @@ def initialize_state() -> None:
     st.session_state.setdefault("admin_sheets_initialized", False)
     st.session_state.setdefault("latest_razorpay_link", {})
     st.session_state.setdefault("runtime_issues", [])
+    st.session_state.setdefault("recent_visit_logs", {})
     if st.session_state.page not in PAGE_NAMES:
         st.session_state.page = PAGE_NAMES[0]
     if st.session_state.page in NAV_PAGE_NAMES:
@@ -7026,6 +7070,7 @@ def initialize_state() -> None:
 def main() -> None:
     apply_theme()
     initialize_state()
+    log_current_app_visit()
     render_topbar()
     render_top_navigation()
     render_flash_notice()

@@ -14,6 +14,12 @@ import httpx
 import websockets
 from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
+from visitor_tracking import (
+    VISITOR_LOG_CSV,
+    VISITOR_LOG_HEADERS,
+    append_local_submission_row,
+    build_visitor_row,
+)
 
 APP_DIR = Path(__file__).parent
 LOGO_PATH = APP_DIR / "assets" / "matrika_logo.svg"
@@ -38,6 +44,14 @@ CEO_NAME = "Abhinav"
 MD_NAME = "Dr. Lavanya"
 LIVE_ZOOM_URL = "https://us04web.zoom.us/j/8048675666?pwd=KF3fzQ5y1ZaDibDafMrbWHyCHl2jqV.1"
 WHATSAPP_URL = f"https://wa.me/917893939545?text={quote('Hi Matrika Academy, I want help choosing the right yoga path.')}"
+TRACKED_PUBLIC_ROUTES = {
+    "/": "Website home",
+    "/academy": "Academy launcher",
+    "/prenatal-yoga": "Prenatal yoga page",
+    "/postnatal-yoga": "Postnatal yoga page",
+    "/kids-yoga-classes": "Kids yoga page",
+    "/yoga-teacher-training": "Teacher training page",
+}
 
 PROGRAMS = [
     ("Garbhasanskara Flow", "Gentle breath, grounding, and pregnancy-aware movement with live and replay support."),
@@ -205,6 +219,32 @@ def academy_shell_url() -> str:
 
 def seo_page_url(slug: str) -> str:
     return f"{PUBLIC_SITE_URL}/{slug}"
+
+
+def trackable_public_page(path: str) -> str:
+    return TRACKED_PUBLIC_ROUTES.get(path, "")
+
+
+def log_public_visit(request: Request) -> None:
+    page = trackable_public_page(request.url.path)
+    if not page:
+        return
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    ip_address = forwarded_for.split(",")[0].strip() if forwarded_for else ""
+    if not ip_address and request.client is not None:
+        ip_address = str(request.client.host or "").strip()
+    row = build_visitor_row(
+        surface="Public website",
+        page=page,
+        path=request.url.path,
+        visitor_type="public",
+        ip_address=ip_address,
+        user_agent=request.headers.get("user-agent", ""),
+        accept_language=request.headers.get("accept-language", ""),
+        referrer=request.headers.get("referer", ""),
+        own_host=site_host(),
+    )
+    append_local_submission_row(VISITOR_LOG_CSV, VISITOR_LOG_HEADERS, row)
 
 
 def json_ld_payload() -> str:
@@ -2176,6 +2216,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.middleware("http")
+async def capture_public_visitor(request: Request, call_next):
+    response = await call_next(request)
+    if request.method == "GET" and response.status_code < 400:
+        log_public_visit(request)
+    return response
 
 
 @app.get("/", response_class=HTMLResponse)
